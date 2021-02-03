@@ -40,7 +40,7 @@ func CompileSQL(builder query.Builder) (string, []interface{}) {
 					clause = append(query.And{}, builder.Clauses...)
 				}
 				clauseSql, clauseValues := clause.Sql()
-				sql.WriteString(clauseSql + " ")
+				sql.WriteString(clauseSql)
 				values = append(values, clauseValues...)
 			}
 			if builder.Limit > 0 {
@@ -66,6 +66,7 @@ func CompileSQL(builder query.Builder) (string, []interface{}) {
 			// 	}
 			// }
 		}
+		sql.WriteString(";")
 		return sql.String(), values
 	}
 	return "", nil

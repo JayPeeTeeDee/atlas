@@ -90,5 +90,3 @@ func (q *Query) All(response interface{}) error {
 
 	return dbscan.ScanAll(response, rows)
 }
-
-/*  */

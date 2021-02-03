@@ -38,3 +38,7 @@ func (p *PostgresAdapter) Exec(query string, args ...interface{}) (result sql.Re
 	result, err = p.conn.Exec(query, args...)
 	return
 }
+
+func (p PostgresAdapter) Placeholder() PlaceholderStyle {
+	return DollarPlaceholder
+}

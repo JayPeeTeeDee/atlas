@@ -66,7 +66,7 @@ func TestModelQuery(t *testing.T) {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
 
-	_, err = db.Query("INSERT INTO modeltest VALUES (1, 1), (2, 2), (1, 1)")
+	_, err = db.Query("INSERT INTO modeltest VALUES (1, 1), (2, 2), (1, 2)")
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -78,6 +78,19 @@ func TestModelQuery(t *testing.T) {
 	}
 
 	if len(res) != 2 {
+		t.Errorf("Query is wrong")
+	}
+
+	res = make([]ModelTest, 0)
+	err = db.Model("ModelTest").Where(query.And{
+		query.Equal{Column: "a", Value: "1"},
+		query.Equal{Column: "b", Value: "1"},
+	}).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 1 {
 		t.Errorf("Query is wrong")
 	}
 
