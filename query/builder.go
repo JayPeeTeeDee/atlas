@@ -4,33 +4,27 @@ type Aggregation interface {
 	GetAggregation() string
 }
 
-// type Selection struct {
-// 	column      string
-// 	aggregation Aggregation
-// }
+type Selection struct {
+	column      string
+	aggregation Aggregation
+}
 
 type Order struct {
 	Column     string
 	Descending bool
 }
 
-type Condition struct {
-	Column string
-	Expr   Expression
-}
-
 type Type string
 
 const (
 	SelectQuery Type = "SelectQueryType"
-	CountQuery  Type = "SelectQueryType"
-	ExecQuery   Type = "SelectQueryType"
+	InsertQuery Type = "InsertQueryType"
 )
 
 type Builder struct {
-	TableName string
-	// selections []Selection
-	Conditions []Condition
+	TableName  string
+	selections []Selection
+	Clauses    []Clause
 	Orders     []Order
 	Limit      uint64
 	Offset     uint64
@@ -39,9 +33,8 @@ type Builder struct {
 	// TODO: join, having, groupby, returning
 }
 
-func (b *Builder) Where(column string, expression Expression) *Builder {
-	condition := Condition{Column: column, Expr: expression}
-	b.Conditions = append(b.Conditions, condition)
+func (b *Builder) Where(clause Clause) *Builder {
+	b.Clauses = append(b.Clauses, clause)
 	return b
 }
 

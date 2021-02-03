@@ -1,34 +1,72 @@
 package atlas
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/JayPeeTeeDee/atlas/query"
-	"github.com/Masterminds/squirrel"
 )
 
 func CompileSQL(builder query.Builder) (string, []interface{}) {
 	if builder.QueryType == query.SelectQuery {
-		selection := "*"
-		if builder.IsCount {
-			selection = "COUNT(*)"
-		}
-		// TODO: Adjust placeholder format by db adapter
-		statementBuilder := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).Select(selection).From(builder.TableName)
+		sql := strings.Builder{}
+		values := make([]interface{}, 0)
+		switch qType := builder.QueryType; qType {
+		case query.SelectQuery:
+			sql.WriteString("SELECT ")
 
-		for _, condition := range builder.Conditions {
-			conditionString := condition.Column + " " + condition.Expr.GetCondition() + " ?"
-			statementBuilder = statementBuilder.Where(conditionString, condition.Expr.GetValue())
+			if builder.IsCount {
+				sql.WriteString("COUNT(*) ")
+			} else {
+				selection := "* "
+				// TODO: Insert selection fields here
+				sql.WriteString(selection)
+			}
+
+			sql.WriteString("FROM ")
+
+		case query.InsertQuery:
+			sql.WriteString("INSERT INTO ")
 		}
 
-		if builder.Limit > 0 {
-			statementBuilder = statementBuilder.Limit(builder.Limit)
-		}
+		sql.WriteString(builder.TableName + " ")
 
-		if builder.Offset > 0 {
-			statementBuilder = statementBuilder.Offset(builder.Offset)
-		}
+		switch qType := builder.QueryType; qType {
+		case query.SelectQuery:
+			if len(builder.Clauses) > 0 {
+				sql.WriteString("WHERE ")
+				clause := builder.Clauses[0]
+				if len(builder.Clauses) > 1 {
+					clause = append(query.And{}, builder.Clauses...)
+				}
+				clauseSql, clauseValues := clause.Sql()
+				sql.WriteString(clauseSql + " ")
+				values = append(values, clauseValues...)
+			}
+			if builder.Limit > 0 {
+				sql.WriteString(" LIMIT ")
+				sql.WriteString(fmt.Sprintf("%d", builder.Limit))
+			}
+			if builder.Offset > 0 {
+				sql.WriteString(" OFFSET ")
+				sql.WriteString(fmt.Sprintf("%d", builder.Offset))
+			}
 
-		sql, args, _ := statementBuilder.ToSql()
-		return sql, args
+		case query.InsertQuery:
+			// TODO: implement
+			// if len(builder.Clauses) > 0 {
+			// 	sql.WriteString("WHERE ")
+			// 	clause := builder.Clauses[0]
+			// 	if len(builder.Clauses) > 1 {
+			// 		clause = append(query.And{}, builder.Clauses...)
+			// 	}
+			// 	clauseSql, clauseValues := clause.Sql()
+			// 	sql.WriteString(clauseSql + " ")
+			// 	values = append(values, clauseValues...)
+			// 	}
+			// }
+		}
+		return sql.String(), values
 	}
 	return "", nil
 }

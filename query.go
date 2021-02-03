@@ -29,9 +29,9 @@ func NewQuery(schema model.Schema, database *Database) *Query {
 }
 
 /* Functions for building up query */
-func (q *Query) Where(column string, expression query.Expression) *Query {
+func (q *Query) Where(clause query.Clause) *Query {
 	// TODO: check that table has column
-	q.builder.Where(column, expression)
+	q.builder.Where(clause)
 	return q
 }
 

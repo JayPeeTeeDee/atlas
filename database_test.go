@@ -72,7 +72,7 @@ func TestModelQuery(t *testing.T) {
 	}
 
 	res := make([]ModelTest, 0)
-	err = db.Model("ModelTest").Where("a", query.Equal{Value: "1"}).All(&res)
+	err = db.Model("ModelTest").Where(query.Equal{Column: "a", Value: "1"}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
