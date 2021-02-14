@@ -18,6 +18,17 @@ func CompileSQL(builder query.Builder) (string, []interface{}) {
 			sql.WriteString("COUNT(*) ")
 		} else {
 			selection := "* "
+			if len(builder.Selections) > 0 {
+				selBuilder := strings.Builder{}
+				for i, sel := range builder.Selections {
+					selBuilder.WriteString(sel)
+					if i < len(builder.Selections)-1 {
+						selBuilder.WriteString(",")
+					}
+				}
+				selBuilder.WriteString(" ")
+				selection = selBuilder.String()
+			}
 			// TODO: Insert selection fields here
 			sql.WriteString(selection)
 		}

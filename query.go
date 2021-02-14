@@ -29,9 +29,10 @@ func NewQuery(schema model.Schema, database *Database) *Query {
 }
 
 /* Functions for building up query */
-func (q *Query) Select(columns ...string) {
+func (q *Query) Select(columns ...string) *Query {
 	// TODO: check that table has columns
 	q.builder.Selections = append(q.builder.Selections, columns...)
+	return q
 }
 
 func (q *Query) Where(clause query.Clause) *Query {
