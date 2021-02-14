@@ -29,6 +29,11 @@ func NewQuery(schema model.Schema, database *Database) *Query {
 }
 
 /* Functions for building up query */
+func (q *Query) Select(columns ...string) {
+	// TODO: check that table has columns
+	q.builder.Selections = append(q.builder.Selections, columns...)
+}
+
 func (q *Query) Where(clause query.Clause) *Query {
 	// TODO: check that table has column
 	q.builder.Where(clause)
@@ -89,4 +94,22 @@ func (q *Query) All(response interface{}) error {
 	}
 
 	return dbscan.ScanAll(response, rows)
+}
+
+func (q *Query) Create(object interface{}) error {
+	q.builder.QueryType = query.InsertQuery
+	schema, err := q.database.GetSchema(object)
+	if err != nil {
+		return err
+	}
+	vals, fieldVals, err := model.ParseObject(object, schema)
+	if err != nil {
+		return err
+	}
+	q.builder.InsertValues = vals
+	q.builder.FieldValues = fieldVals
+	statement, args := CompileSQL(*q.builder)
+	// TODO: Make use of result
+	_, err = q.database.Execute(statement, args...)
+	return err
 }

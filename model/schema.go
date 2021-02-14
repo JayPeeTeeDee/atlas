@@ -193,3 +193,44 @@ func Parse(target interface{}) (*Schema, error) {
 
 	return schema, nil
 }
+
+func ParseType(target interface{}) (string, error) {
+	if target == nil {
+		return "", fmt.Errorf("%w: %+v", ErrUnsupportedDataType, target)
+	}
+	modelType := reflect.ValueOf(target).Type()
+	for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
+		modelType = modelType.Elem()
+	}
+	return modelType.Name(), nil
+}
+
+func ParseObject(target interface{}, schema Schema) ([]map[string]interface{}, [][]interface{}, error) {
+	targetItem := reflect.ValueOf(target)
+	res := make([]map[string]interface{}, 0)
+	allFieldsRes := make([][]interface{}, 0)
+	if targetItem.Kind() == reflect.Slice {
+		for i := 0; i < targetItem.Len(); i++ {
+			itemRes := make(map[string]interface{})
+			itemFieldsRes := make([]interface{}, 0)
+			item := targetItem.Index(i)
+			for _, field := range schema.Fields {
+				itemRes[field.Name] = item.FieldByName(field.Name).Interface()
+				itemFieldsRes = append(itemFieldsRes, itemRes[field.Name])
+			}
+			res = append(res, itemRes)
+			allFieldsRes = append(allFieldsRes, itemFieldsRes)
+		}
+	} else if targetItem.Kind() == reflect.Struct {
+		itemRes := make(map[string]interface{})
+		itemFieldsRes := make([]interface{}, 0)
+		for _, field := range schema.Fields {
+			itemRes[field.Name] = targetItem.FieldByName(field.Name).Interface()
+			itemFieldsRes = append(itemFieldsRes, itemRes[field.Name])
+		}
+		res = append(res, itemRes)
+		allFieldsRes = append(allFieldsRes, itemFieldsRes)
+	}
+
+	return res, allFieldsRes, nil
+}

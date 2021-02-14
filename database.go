@@ -12,6 +12,8 @@ import (
 
 type DatabaseType string
 
+var ErrNoSchema = errors.New("no such schema registered")
+
 const (
 	DBType_Postgres DatabaseType = "Postgres"
 )
@@ -51,6 +53,19 @@ func (d *Database) RegisterModel(target interface{}) error {
 
 	d.schemas[schema.Name] = *schema
 	return nil
+}
+
+func (d *Database) GetSchema(target interface{}) (model.Schema, error) {
+	name, err := model.ParseType(target)
+	if err != nil {
+		return model.Schema{}, err
+	}
+
+	if schema, ok := d.schemas[name]; ok {
+		return schema, nil
+	} else {
+		return model.Schema{}, fmt.Errorf("%w: %+v", ErrNoSchema, target)
+	}
 }
 
 func (d *Database) Model(name string) *Query {

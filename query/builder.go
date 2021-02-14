@@ -4,11 +4,6 @@ type Aggregation interface {
 	GetAggregation() string
 }
 
-type Selection struct {
-	column      string
-	aggregation Aggregation
-}
-
 type Order struct {
 	Column     string
 	Descending bool
@@ -23,13 +18,16 @@ const (
 
 type Builder struct {
 	TableName  string
-	selections []Selection
+	Selections []string
 	Clauses    []Clause
 	Orders     []Order
 	Limit      uint64
 	Offset     uint64
 	QueryType  Type
 	IsCount    bool
+
+	InsertValues []map[string]interface{}
+	FieldValues  [][]interface{}
 	// TODO: join, having, groupby, returning
 }
 
