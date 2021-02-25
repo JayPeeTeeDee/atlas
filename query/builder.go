@@ -17,7 +17,6 @@ const (
 )
 
 type Builder struct {
-	TableName  string
 	Selections []string
 	Clauses    []Clause
 	Orders     []Order
@@ -27,7 +26,6 @@ type Builder struct {
 	IsCount    bool
 
 	InsertValues []map[string]interface{}
-	FieldValues  [][]interface{}
 	// TODO: join, having, groupby, returning
 }
 

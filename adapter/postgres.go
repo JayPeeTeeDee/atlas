@@ -42,3 +42,7 @@ func (p *PostgresAdapter) Exec(query string, args ...interface{}) (result sql.Re
 func (p PostgresAdapter) Placeholder() PlaceholderStyle {
 	return DollarPlaceholder
 }
+
+func (p PostgresAdapter) SpatialType() SpatialExtension {
+	return PostGisExtension
+}

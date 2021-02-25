@@ -3,11 +3,14 @@ package query
 import (
 	"fmt"
 	"strings"
+
+	"github.com/JayPeeTeeDee/atlas/adapter"
+	"github.com/JayPeeTeeDee/atlas/model"
 )
 
 type Clause interface {
 	Condition() string
-	Sql() (string, []interface{})
+	Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{})
 }
 
 type GreaterThan struct {
@@ -15,8 +18,8 @@ type GreaterThan struct {
 	Value  string
 }
 
-func (e GreaterThan) Sql() (string, []interface{}) {
-	return fmt.Sprintf("%s > ?", e.Column), []interface{}{e.Value}
+func (e GreaterThan) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	return fmt.Sprintf("%s > ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
 func (e GreaterThan) Condition() string {
@@ -28,8 +31,8 @@ type LessThan struct {
 	Value  string
 }
 
-func (e LessThan) Sql() (string, []interface{}) {
-	return fmt.Sprintf("%s < ?", e.Column), []interface{}{e.Value}
+func (e LessThan) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	return fmt.Sprintf("%s < ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
 func (e LessThan) Condition() string {
@@ -41,8 +44,8 @@ type Equal struct {
 	Value  string
 }
 
-func (e Equal) Sql() (string, []interface{}) {
-	return fmt.Sprintf("%s = ?", e.Column), []interface{}{e.Value}
+func (e Equal) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	return fmt.Sprintf("%s = ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
 func (e Equal) Condition() string {
@@ -54,8 +57,8 @@ type GreaterThanOrEqual struct {
 	Value  string
 }
 
-func (e GreaterThanOrEqual) Sql() (string, []interface{}) {
-	return fmt.Sprintf("%s >= ?", e.Column), []interface{}{e.Value}
+func (e GreaterThanOrEqual) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	return fmt.Sprintf("%s >= ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
 func (e GreaterThanOrEqual) Condition() string {
@@ -67,8 +70,8 @@ type LessThanOrEqual struct {
 	Value  string
 }
 
-func (e LessThanOrEqual) Sql() (string, []interface{}) {
-	return fmt.Sprintf("%s <= ?", e.Column), []interface{}{e.Value}
+func (e LessThanOrEqual) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	return fmt.Sprintf("%s <= ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
 func (e LessThanOrEqual) Condition() string {
@@ -80,8 +83,8 @@ type NotEqual struct {
 	Value  string
 }
 
-func (e NotEqual) Sql() (string, []interface{}) {
-	return fmt.Sprintf("%s <> ?", e.Column), []interface{}{e.Value}
+func (e NotEqual) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	return fmt.Sprintf("%s <> ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
 func (e NotEqual) Condition() string {
@@ -93,8 +96,8 @@ type Like struct {
 	Value  string
 }
 
-func (e Like) Sql() (string, []interface{}) {
-	return fmt.Sprintf("%s LIKE ?", e.Column), []interface{}{e.Value}
+func (e Like) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	return fmt.Sprintf("%s LIKE ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
 func (e Like) Condition() string {
@@ -106,8 +109,8 @@ type NotLike struct {
 	Value  string
 }
 
-func (e NotLike) Sql() (string, []interface{}) {
-	return fmt.Sprintf("%s NOT LIKE ?", e.Column), []interface{}{e.Value}
+func (e NotLike) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	return fmt.Sprintf("%s NOT LIKE ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
 func (e NotLike) Condition() string {
@@ -116,11 +119,11 @@ func (e NotLike) Condition() string {
 
 type Or []Clause
 
-func (e Or) Sql() (string, []interface{}) {
+func (e Or) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
 	sql := strings.Builder{}
 	values := make([]interface{}, 0)
 	for i, clause := range e {
-		clauseSql, clauseVals := clause.Sql()
+		clauseSql, clauseVals := clause.Sql(fields, spatialType)
 		if i == 0 {
 			sql.WriteString(clauseSql)
 		} else {
@@ -138,11 +141,11 @@ func (e Or) Condition() string {
 
 type And []Clause
 
-func (e And) Sql() (string, []interface{}) {
+func (e And) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
 	sql := strings.Builder{}
 	values := make([]interface{}, 0)
 	for i, clause := range e {
-		clauseSql, clauseVals := clause.Sql()
+		clauseSql, clauseVals := clause.Sql(fields, spatialType)
 		if i == 0 {
 			sql.WriteString(clauseSql)
 		} else {

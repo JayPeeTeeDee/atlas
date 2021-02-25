@@ -1,17 +1,51 @@
-package atlas
+package query
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/JayPeeTeeDee/atlas/query"
+	"github.com/JayPeeTeeDee/atlas/adapter"
+	"github.com/JayPeeTeeDee/atlas/model"
 )
 
-func CompileSQL(builder query.Builder) (string, []interface{}) {
+type Compiler struct {
+	SpatialType adapter.SpatialExtension
+	Schema      model.Schema
+}
+
+func (c Compiler) parseSelectionField(name string) string {
+	field := c.Schema.FieldsByName[name]
+	switch field.DataType {
+	case model.LocationType, model.RegionType:
+		if c.SpatialType == adapter.PostGisExtension {
+			return fmt.Sprintf("ST_AsGeoJSON(%s)", field.DBName)
+		} else {
+			return field.DBName
+		}
+	default:
+		return field.DBName
+	}
+}
+
+func (c Compiler) parseInsertionValuePlaceholder(name string) string {
+	field := c.Schema.FieldsByName[name]
+	switch field.DataType {
+	case model.LocationType, model.RegionType:
+		if c.SpatialType == adapter.PostGisExtension {
+			return "ST_GeomFromGeoJSON(?)"
+		} else {
+			return "?"
+		}
+	default:
+		return "?"
+	}
+}
+
+func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 	sql := strings.Builder{}
 	values := make([]interface{}, 0)
 	switch qType := builder.QueryType; qType {
-	case query.SelectQuery:
+	case SelectQuery:
 		sql.WriteString("SELECT ")
 
 		if builder.IsCount {
@@ -21,7 +55,7 @@ func CompileSQL(builder query.Builder) (string, []interface{}) {
 			if len(builder.Selections) > 0 {
 				selBuilder := strings.Builder{}
 				for i, sel := range builder.Selections {
-					selBuilder.WriteString(sel)
+					selBuilder.WriteString(c.parseSelectionField(sel))
 					if i < len(builder.Selections)-1 {
 						selBuilder.WriteString(",")
 					}
@@ -35,21 +69,21 @@ func CompileSQL(builder query.Builder) (string, []interface{}) {
 
 		sql.WriteString("FROM ")
 
-	case query.InsertQuery:
+	case InsertQuery:
 		sql.WriteString("INSERT INTO ")
 	}
 
-	sql.WriteString(builder.TableName + " ")
+	sql.WriteString(c.Schema.Table + " ")
 
 	switch qType := builder.QueryType; qType {
-	case query.SelectQuery:
+	case SelectQuery:
 		if len(builder.Clauses) > 0 {
 			sql.WriteString("WHERE ")
 			clause := builder.Clauses[0]
 			if len(builder.Clauses) > 1 {
-				clause = append(query.And{}, builder.Clauses...)
+				clause = append(And{}, builder.Clauses...)
 			}
-			clauseSql, clauseValues := clause.Sql()
+			clauseSql, clauseValues := clause.Sql(c.Schema.FieldsByName, c.SpatialType)
 			sql.WriteString(clauseSql)
 			values = append(values, clauseValues...)
 		}
@@ -62,10 +96,15 @@ func CompileSQL(builder query.Builder) (string, []interface{}) {
 			sql.WriteString(fmt.Sprintf("%d", builder.Offset))
 		}
 
-	case query.InsertQuery:
+	case InsertQuery:
 		if len(builder.Selections) > 0 {
 			sql.WriteString("(")
-			sql.WriteString(strings.Join(builder.Selections, ","))
+			for i, key := range builder.Selections {
+				sql.WriteString(c.Schema.FieldsByName[key].DBName)
+				if i < len(builder.Selections)-1 {
+					sql.WriteString(",")
+				}
+			}
 			sql.WriteString(") ")
 		}
 		sql.WriteString("VALUES ")
@@ -74,7 +113,7 @@ func CompileSQL(builder query.Builder) (string, []interface{}) {
 			for i, insertVal := range builder.InsertValues {
 				sql.WriteString("(")
 				for k, key := range builder.Selections {
-					sql.WriteString("?")
+					sql.WriteString(c.parseInsertionValuePlaceholder(key))
 					values = append(values, insertVal[key])
 					if k < len(builder.Selections)-1 {
 						sql.WriteString(",")
@@ -86,17 +125,17 @@ func CompileSQL(builder query.Builder) (string, []interface{}) {
 				}
 			}
 		} else {
-			for i, insertAllVals := range builder.FieldValues {
+			for i, insertVal := range builder.InsertValues {
 				sql.WriteString("(")
-				for k, val := range insertAllVals {
-					sql.WriteString("?")
-					values = append(values, val)
-					if k < len(insertAllVals)-1 {
+				for k, field := range c.Schema.Fields {
+					sql.WriteString(c.parseInsertionValuePlaceholder(field.Name))
+					values = append(values, insertVal[field.Name])
+					if k < len(c.Schema.Fields)-1 {
 						sql.WriteString(",")
 					}
 				}
 				sql.WriteString(")")
-				if i < len(builder.FieldValues)-1 {
+				if i < len(builder.InsertValues)-1 {
 					sql.WriteString(",")
 				}
 			}

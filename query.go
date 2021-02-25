@@ -11,6 +11,7 @@ type Query struct {
 	schema   model.Schema
 	builder  *query.Builder
 	database *Database
+	compiler *query.Compiler
 }
 
 type Result struct {
@@ -20,11 +21,13 @@ type Result struct {
 
 func NewQuery(schema model.Schema, database *Database) *Query {
 	return &Query{
-		schema: schema,
-		builder: &query.Builder{
-			TableName: schema.Table,
-		},
+		schema:   schema,
+		builder:  &query.Builder{},
 		database: database,
+		compiler: &query.Compiler{
+			SpatialType: database.adapter.SpatialType(),
+			Schema:      schema,
+		},
 	}
 }
 
@@ -65,7 +68,7 @@ func (q *Query) OrderBy(column string, desc bool) *Query {
 func (q *Query) Count(count *int) error {
 	q.builder.QueryType = query.SelectQuery
 	// TODO: order by primary key, limit 1
-	statement, args := CompileSQL(*q.builder)
+	statement, args := q.compiler.CompileSQL(*q.builder)
 	rows, err := q.database.Query(statement, args...)
 	if err != nil {
 		return err
@@ -77,7 +80,7 @@ func (q *Query) First(response interface{}) error {
 	q.builder.QueryType = query.SelectQuery
 	// TODO: order by primary key, limit 1
 	q.builder.Limit = 1
-	statement, args := CompileSQL(*q.builder)
+	statement, args := q.compiler.CompileSQL(*q.builder)
 	rows, err := q.database.Query(statement, args...)
 	if err != nil {
 		return err
@@ -87,7 +90,7 @@ func (q *Query) First(response interface{}) error {
 
 func (q *Query) All(response interface{}) error {
 	q.builder.QueryType = query.SelectQuery
-	statement, args := CompileSQL(*q.builder)
+	statement, args := q.compiler.CompileSQL(*q.builder)
 	rows, err := q.database.Query(statement, args...)
 	// TODO: return wrapped error
 	if err != nil {
@@ -103,13 +106,12 @@ func (q *Query) Create(object interface{}) error {
 	if err != nil {
 		return err
 	}
-	vals, fieldVals, err := model.ParseObject(object, schema)
+	vals, err := model.ParseObject(object, schema)
 	if err != nil {
 		return err
 	}
 	q.builder.InsertValues = vals
-	q.builder.FieldValues = fieldVals
-	statement, args := CompileSQL(*q.builder)
+	statement, args := q.compiler.CompileSQL(*q.builder)
 	// TODO: Make use of result
 	_, err = q.database.Execute(statement, args...)
 	return err

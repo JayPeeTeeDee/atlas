@@ -72,7 +72,7 @@ func TestModelSingleQuery(t *testing.T) {
 	}
 
 	res := ModelTest{}
-	err = db.Model("ModelTest").Where(query.Equal{Column: "a", Value: "1"}).First(&res)
+	err = db.Model("ModelTest").Where(query.Equal{Column: "A", Value: "1"}).First(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -83,8 +83,8 @@ func TestModelSingleQuery(t *testing.T) {
 
 	res = ModelTest{}
 	err = db.Model("ModelTest").Where(query.And{
-		query.Equal{Column: "a", Value: "1"},
-		query.Equal{Column: "b", Value: "1"},
+		query.Equal{Column: "A", Value: "1"},
+		query.Equal{Column: "B", Value: "1"},
 	}).First(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
@@ -119,7 +119,7 @@ func TestModelSelectQuery(t *testing.T) {
 	}
 
 	res := ModelTest{}
-	err = db.Model("ModelTest").Select("B").Where(query.Equal{Column: "a", Value: "2"}).First(&res)
+	err = db.Model("ModelTest").Select("B").Where(query.Equal{Column: "A", Value: "2"}).First(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -129,7 +129,7 @@ func TestModelSelectQuery(t *testing.T) {
 	}
 
 	other := make([]ModelTest, 0)
-	err = db.Model("ModelTest").Select("A").Where(query.Equal{Column: "a", Value: "1"}).All(&other)
+	err = db.Model("ModelTest").Select("A").Where(query.Equal{Column: "A", Value: "1"}).All(&other)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -144,7 +144,7 @@ func TestModelSelectQuery(t *testing.T) {
 	}
 
 	other = make([]ModelTest, 0)
-	err = db.Model("ModelTest").Select("A", "B").Where(query.Equal{Column: "a", Value: "1"}).All(&other)
+	err = db.Model("ModelTest").Select("A", "B").Where(query.Equal{Column: "A", Value: "1"}).All(&other)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -183,7 +183,7 @@ func TestModelAllQuery(t *testing.T) {
 	}
 
 	res := make([]ModelTest, 0)
-	err = db.Model("ModelTest").Where(query.Equal{Column: "a", Value: "1"}).All(&res)
+	err = db.Model("ModelTest").Where(query.Equal{Column: "A", Value: "1"}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -194,8 +194,8 @@ func TestModelAllQuery(t *testing.T) {
 
 	res = make([]ModelTest, 0)
 	err = db.Model("ModelTest").Where(query.And{
-		query.Equal{Column: "a", Value: "1"},
-		query.Equal{Column: "b", Value: "1"},
+		query.Equal{Column: "A", Value: "1"},
+		query.Equal{Column: "B", Value: "1"},
 	}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
@@ -232,7 +232,7 @@ func TestModelSingleInsert(t *testing.T) {
 	}
 
 	res := make([]ModelTest, 0)
-	err = db.Model("ModelTest").Where(query.Equal{Column: "a", Value: "1"}).All(&res)
+	err = db.Model("ModelTest").Where(query.Equal{Column: "A", Value: "1"}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -243,8 +243,8 @@ func TestModelSingleInsert(t *testing.T) {
 
 	res = make([]ModelTest, 0)
 	err = db.Model("ModelTest").Where(query.And{
-		query.Equal{Column: "a", Value: "1"},
-		query.Equal{Column: "b", Value: "2"},
+		query.Equal{Column: "A", Value: "1"},
+		query.Equal{Column: "B", Value: "2"},
 	}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
@@ -284,7 +284,7 @@ func TestModelMultiInsert(t *testing.T) {
 	}
 
 	res := make([]ModelTest, 0)
-	err = db.Model("ModelTest").Where(query.Equal{Column: "a", Value: "1"}).All(&res)
+	err = db.Model("ModelTest").Where(query.Equal{Column: "A", Value: "1"}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -295,8 +295,8 @@ func TestModelMultiInsert(t *testing.T) {
 
 	res = make([]ModelTest, 0)
 	err = db.Model("ModelTest").Where(query.And{
-		query.Equal{Column: "a", Value: "1"},
-		query.Equal{Column: "b", Value: "1"},
+		query.Equal{Column: "A", Value: "1"},
+		query.Equal{Column: "B", Value: "1"},
 	}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
@@ -337,7 +337,7 @@ func TestModelSelectInsert(t *testing.T) {
 	}
 
 	res := make([]ModelTest, 0)
-	err = db.Model("ModelTest").Where(query.Equal{Column: "a", Value: "1"}).All(&res)
+	err = db.Model("ModelTest").Where(query.Equal{Column: "A", Value: "1"}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -348,8 +348,8 @@ func TestModelSelectInsert(t *testing.T) {
 
 	res = make([]ModelTest, 0)
 	err = db.Model("ModelTest").Where(query.And{
-		query.Equal{Column: "a", Value: "2"},
-		query.Equal{Column: "b", Value: "1"},
+		query.Equal{Column: "A", Value: "2"},
+		query.Equal{Column: "B", Value: "1"},
 	}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
