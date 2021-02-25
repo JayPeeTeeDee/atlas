@@ -2,6 +2,7 @@ package model
 
 import (
 	"reflect"
+	"regexp"
 	"strings"
 )
 
@@ -47,4 +48,15 @@ func CheckTruth(val interface{}) bool {
 	}
 
 	return !reflect.ValueOf(val).IsZero()
+}
+
+var (
+	matchFirstCapRe = regexp.MustCompile("(.)([A-Z][a-z]+)")
+	matchAllCapRe   = regexp.MustCompile("([a-z0-9])([A-Z])")
+)
+
+func ToSnakeCase(str string) string {
+	snake := matchFirstCapRe.ReplaceAllString(str, "${1}_${2}")
+	snake = matchAllCapRe.ReplaceAllString(snake, "${1}_${2}")
+	return strings.ToLower(snake)
 }

@@ -18,7 +18,7 @@ func (c Compiler) parseSelectionField(name string) string {
 	switch field.DataType {
 	case model.LocationType, model.RegionType:
 		if c.SpatialType == adapter.PostGisExtension {
-			return fmt.Sprintf("ST_AsGeoJSON(%s)", field.DBName)
+			return fmt.Sprintf("ST_AsGeoJSON(%s) as %s", field.DBName, field.DBName)
 		} else {
 			return field.DBName
 		}
@@ -51,20 +51,22 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 		if builder.IsCount {
 			sql.WriteString("COUNT(*) ")
 		} else {
-			selection := "* "
-			if len(builder.Selections) > 0 {
-				selBuilder := strings.Builder{}
-				for i, sel := range builder.Selections {
-					selBuilder.WriteString(c.parseSelectionField(sel))
-					if i < len(builder.Selections)-1 {
-						selBuilder.WriteString(",")
-					}
+			cols := builder.Selections
+			if len(cols) == 0 {
+				cols = make([]string, 0)
+				for _, field := range c.Schema.Fields {
+					cols = append(cols, field.Name)
 				}
-				selBuilder.WriteString(" ")
-				selection = selBuilder.String()
 			}
-			// TODO: Insert selection fields here
-			sql.WriteString(selection)
+			selBuilder := strings.Builder{}
+			for i, sel := range cols {
+				selBuilder.WriteString(c.parseSelectionField(sel))
+				if i < len(cols)-1 {
+					selBuilder.WriteString(",")
+				}
+			}
+			selBuilder.WriteString(" ")
+			sql.WriteString(selBuilder.String())
 		}
 
 		sql.WriteString("FROM ")

@@ -17,8 +17,17 @@ func NewLocation(lon float64, lat float64) Location {
 	return Location{geojson.NewPointGeometry([]float64{lon, lat})}
 }
 
+func (l *Location) IsEqual(other Location) bool {
+	first_val, first_err := l.point.Value()
+	other_val, other_err := other.point.Value()
+	return first_err == nil && other_err == nil && reflect.DeepEqual(first_val, other_val)
+}
+
 func (l *Location) Scan(value interface{}) error {
 	l.point = &geojson.Geometry{}
+	if value == nil {
+		return nil
+	}
 	err := l.point.Scan(value)
 	if err != nil {
 		return err
@@ -29,7 +38,7 @@ func (l *Location) Scan(value interface{}) error {
 	return nil
 }
 
-func (l *Location) Value() (driver.Value, error) {
+func (l Location) Value() (driver.Value, error) {
 	if !l.point.IsPoint() {
 		return nil, errors.New("Invalid location representation")
 	}
@@ -46,8 +55,17 @@ func NewRegion(coords [][]float64) Region {
 	return Region{geojson.NewPolygonGeometry(poly)}
 }
 
+func (r *Region) IsEqual(other Region) bool {
+	first_val, first_err := r.polygon.Value()
+	other_val, other_err := other.polygon.Value()
+	return first_err == nil && other_err == nil && reflect.DeepEqual(first_val, other_val)
+}
+
 func (r *Region) Scan(value interface{}) error {
 	r.polygon = &geojson.Geometry{}
+	if value == nil {
+		return nil
+	}
 	err := r.polygon.Scan(value)
 	if err != nil {
 		return err
@@ -58,7 +76,7 @@ func (r *Region) Scan(value interface{}) error {
 	return nil
 }
 
-func (r *Region) Value() (driver.Value, error) {
+func (r Region) Value() (driver.Value, error) {
 	if !r.polygon.IsPolygon() {
 		return nil, errors.New("Invalid region representation")
 	}
@@ -79,7 +97,7 @@ func (t *Timestamp) Scan(value interface{}) error {
 	}
 }
 
-func (t *Timestamp) Value() (driver.Value, error) {
+func (t Timestamp) Value() (driver.Value, error) {
 	return *(t.time), nil
 }
 

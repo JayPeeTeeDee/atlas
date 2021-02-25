@@ -3,6 +3,7 @@ package atlas
 import (
 	"testing"
 
+	"github.com/JayPeeTeeDee/atlas/model"
 	"github.com/JayPeeTeeDee/atlas/query"
 )
 
@@ -61,12 +62,12 @@ func TestModelSingleQuery(t *testing.T) {
 
 	db.RegisterModel(&ModelTest{})
 
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS modeltest (a int, b int);")
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
 
-	_, err = db.Query("INSERT INTO modeltest VALUES (1, 1), (2, 2), (1, 2)")
+	_, err = db.Query("INSERT INTO model_test VALUES (1, 1), (2, 2), (1, 2)")
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -94,7 +95,7 @@ func TestModelSingleQuery(t *testing.T) {
 		t.Errorf("Query is wrong")
 	}
 
-	_, err = db.Execute("DROP TABLE modeltest;")
+	_, err = db.Execute("DROP TABLE model_test;")
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
@@ -108,12 +109,12 @@ func TestModelSelectQuery(t *testing.T) {
 
 	db.RegisterModel(&ModelTest{})
 
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS modeltest (a int, b int);")
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
 
-	_, err = db.Query("INSERT INTO modeltest VALUES (1, 1), (2, 2), (1, 2)")
+	_, err = db.Query("INSERT INTO model_test VALUES (1, 1), (2, 2), (1, 2)")
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -158,7 +159,7 @@ func TestModelSelectQuery(t *testing.T) {
 		}
 	}
 
-	_, err = db.Execute("DROP TABLE modeltest;")
+	_, err = db.Execute("DROP TABLE model_test;")
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
@@ -172,12 +173,12 @@ func TestModelAllQuery(t *testing.T) {
 
 	db.RegisterModel(&ModelTest{})
 
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS modeltest (a int, b int);")
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
 
-	_, err = db.Query("INSERT INTO modeltest VALUES (1, 1), (2, 2), (1, 2)")
+	_, err = db.Query("INSERT INTO model_test VALUES (1, 1), (2, 2), (1, 2)")
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -205,7 +206,7 @@ func TestModelAllQuery(t *testing.T) {
 		t.Errorf("Query is wrong")
 	}
 
-	_, err = db.Execute("DROP TABLE modeltest;")
+	_, err = db.Execute("DROP TABLE model_test;")
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
@@ -219,7 +220,7 @@ func TestModelSingleInsert(t *testing.T) {
 
 	db.RegisterModel(&ModelTest{})
 
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS modeltest (a int, b int);")
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -254,7 +255,7 @@ func TestModelSingleInsert(t *testing.T) {
 		t.Errorf("Query is wrong")
 	}
 
-	_, err = db.Execute("DROP TABLE modeltest;")
+	_, err = db.Execute("DROP TABLE model_test;")
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
@@ -267,7 +268,7 @@ func TestModelMultiInsert(t *testing.T) {
 
 	db.RegisterModel(&ModelTest{})
 
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS modeltest (a int, b int);")
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -306,7 +307,7 @@ func TestModelMultiInsert(t *testing.T) {
 		t.Errorf("Query is wrong")
 	}
 
-	_, err = db.Execute("DROP TABLE modeltest;")
+	_, err = db.Execute("DROP TABLE model_test;")
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
@@ -320,7 +321,7 @@ func TestModelSelectInsert(t *testing.T) {
 
 	db.RegisterModel(&ModelTest{})
 
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS modeltest (a int, b int DEFAULT 1);")
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int DEFAULT 1);")
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -359,7 +360,84 @@ func TestModelSelectInsert(t *testing.T) {
 		t.Errorf("Query is wrong")
 	}
 
-	_, err = db.Execute("DROP TABLE modeltest;")
+	_, err = db.Execute("DROP TABLE model_test;")
+	if err != nil {
+		t.Errorf("Failed to drop table: %s\n", err.Error())
+	}
+}
+
+type SpatialModelTest struct {
+	A int
+	B model.Location
+	C model.Region
+}
+
+func TestSpatialModelInsert(t *testing.T) {
+	db, err := ConnectWithDSN(DBType_Postgres, "postgresql://johnphua:johnphua@localhost/project")
+	if err != nil {
+		t.Errorf("Failed to connect to db")
+	}
+
+	db.RegisterModel(&SpatialModelTest{})
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geometry, c geometry);")
+	if err != nil {
+		t.Errorf("Failed to create table: %s\n", err.Error())
+	}
+
+	vals := []SpatialModelTest{
+		{
+			A: 1,
+			B: model.NewLocation(-60.0, 0.0),
+			C: model.NewRegion([][]float64{
+				{-100.0, -100.0},
+				{-100.0, 100.0},
+				{100.0, 100.0},
+				{100.0, -100.0},
+				{-100.0, -100.0},
+			}),
+		},
+		{
+			A: 2,
+			B: model.NewLocation(30.0, 10.0),
+			C: model.NewRegion([][]float64{
+				{-100.0, -100.0},
+				{-100.0, 100.0},
+				{100.0, 100.0},
+				{100.0, -100.0},
+				{-100.0, -100.0},
+			}),
+		},
+		{
+			A: 3,
+			B: model.NewLocation(50.0, 20.0),
+			C: model.NewRegion([][]float64{
+				{-150.0, -150.0},
+				{-150.0, 150.0},
+				{150.0, 150.0},
+				{150.0, -150.0},
+				{-150.0, -150.0},
+			}),
+		},
+	}
+
+	err = db.Model("SpatialModelTest").Create(vals)
+	if err != nil {
+		t.Errorf("Failed to insert rows: %s\n", err.Error())
+	}
+
+	res := make([]SpatialModelTest, 0)
+	err = db.Model("SpatialModelTest").Where(query.Equal{Column: "A", Value: "1"}).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 1 {
+		t.Errorf("Query is wrong")
+	} else if !res[0].B.IsEqual(model.NewLocation(-60.0, 0.0)) {
+		t.Errorf("Query is wrong")
+	}
+
+	_, err = db.Execute("DROP TABLE spatial_model_test;")
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}

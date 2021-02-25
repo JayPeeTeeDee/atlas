@@ -143,10 +143,9 @@ func Parse(target interface{}) (*Schema, error) {
 	}
 
 	schema := &Schema{
-		Name:      modelType.Name(),
-		ModelType: modelType,
-		// TODO: Create proper naming conventions
-		Table:          strings.ToLower(modelType.Name()),
+		Name:           modelType.Name(),
+		ModelType:      modelType,
+		Table:          ToSnakeCase(modelType.Name()),
 		FieldsByName:   map[string]*Field{},
 		FieldsByDBName: map[string]*Field{},
 	}
@@ -159,8 +158,7 @@ func Parse(target interface{}) (*Schema, error) {
 
 	for _, field := range schema.Fields {
 		if field.DBName == "" && field.DataType != "" {
-			// TODO: Create proper naming conventions
-			field.DBName = strings.ToLower(field.Name)
+			field.DBName = ToSnakeCase(field.Name)
 		}
 
 		if field.DBName != "" {
