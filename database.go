@@ -55,7 +55,7 @@ func (d *Database) RegisterModel(target interface{}) error {
 	return nil
 }
 
-func (d *Database) GetSchema(target interface{}) (model.Schema, error) {
+func (d *Database) getSchema(target interface{}) (model.Schema, error) {
 	name, err := model.ParseType(target)
 	if err != nil {
 		return model.Schema{}, err
@@ -72,6 +72,15 @@ func (d *Database) Model(name string) *Query {
 	// Might not be present
 	schema := d.schemas[name]
 	return NewQuery(schema, d)
+}
+
+func (d *Database) Create(object interface{}) (sql.Result, error) {
+	schema, err := d.getSchema(object)
+	if err != nil {
+		return nil, err
+	}
+	query := NewQuery(schema, d)
+	return query.Create(object)
 }
 
 func (d *Database) Execute(query string, args ...interface{}) (sql.Result, error) {

@@ -1,6 +1,8 @@
 package atlas
 
 import (
+	"database/sql"
+
 	"github.com/JayPeeTeeDee/atlas/model"
 	"github.com/JayPeeTeeDee/atlas/query"
 	"github.com/georgysavva/scany/dbscan"
@@ -106,19 +108,14 @@ func (q *Query) All(response interface{}) error {
 	return dbscan.ScanAll(response, rows)
 }
 
-func (q *Query) Create(object interface{}) error {
+func (q *Query) Create(object interface{}) (sql.Result, error) {
 	q.builder.QueryType = query.InsertQuery
-	schema, err := q.database.GetSchema(object)
+	vals, err := model.ParseObject(object, q.schema)
 	if err != nil {
-		return err
-	}
-	vals, err := model.ParseObject(object, schema)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	q.builder.InsertValues = vals
 	statement, args := q.compiler.CompileSQL(*q.builder)
 	// TODO: Make use of result
-	_, err = q.database.Execute(statement, args...)
-	return err
+	return q.database.Execute(statement, args...)
 }

@@ -227,7 +227,7 @@ func TestModelSingleInsert(t *testing.T) {
 
 	val := ModelTest{A: 1, B: 1}
 
-	err = db.Model("ModelTest").Create(val)
+	_, err = db.Create(val)
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -279,7 +279,7 @@ func TestModelMultiInsert(t *testing.T) {
 		{A: 1, B: 2},
 	}
 
-	err = db.Model("ModelTest").Create(vals)
+	_, err = db.Create(vals)
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -332,7 +332,7 @@ func TestModelSelectInsert(t *testing.T) {
 		{A: 1},
 	}
 
-	err = db.Model("ModelTest").Select("A").Create(vals)
+	_, err = db.Model("ModelTest").Select("A").Create(vals)
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -385,7 +385,7 @@ func TestModelOmitInsert(t *testing.T) {
 		{A: 1},
 	}
 
-	err = db.Model("ModelTest").Omit("B").Create(vals)
+	_, err = db.Model("ModelTest").Omit("B").Create(vals)
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -473,7 +473,7 @@ func TestSpatialModelInsert(t *testing.T) {
 		},
 	}
 
-	err = db.Model("SpatialModelTest").Create(vals)
+	_, err = db.Create(vals)
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
