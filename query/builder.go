@@ -1,5 +1,7 @@
 package query
 
+import "github.com/JayPeeTeeDee/atlas/utils"
+
 type Aggregation interface {
 	GetAggregation() string
 }
@@ -17,7 +19,8 @@ const (
 )
 
 type Builder struct {
-	Selections []string
+	Selections *utils.Set
+	Omissions  *utils.Set
 	Clauses    []Clause
 	Orders     []Order
 	Limit      uint64
@@ -27,6 +30,15 @@ type Builder struct {
 
 	InsertValues []map[string]interface{}
 	// TODO: join, having, groupby, returning
+}
+
+func NewBuilder() *Builder {
+	builder := &Builder{}
+	builder.Selections = utils.NewSet()
+	builder.Omissions = utils.NewSet()
+	builder.Clauses = make([]Clause, 0)
+	builder.Orders = make([]Order, 0)
+	return builder
 }
 
 func (b *Builder) Where(clause Clause) *Builder {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/JayPeeTeeDee/atlas/adapter"
 	"github.com/JayPeeTeeDee/atlas/model"
+	"github.com/JayPeeTeeDee/atlas/utils"
 )
 
 type Compiler struct {
@@ -44,6 +45,17 @@ func (c Compiler) parseInsertionValuePlaceholder(name string) string {
 func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 	sql := strings.Builder{}
 	values := make([]interface{}, 0)
+	var target_fields []string
+	if builder.Selections.Size() == 0 {
+		target_set := utils.NewSet()
+		for _, field := range c.Schema.Fields {
+			target_set.Add(field.Name)
+		}
+		target_fields = target_set.Difference(builder.Omissions).Keys()
+	} else {
+		target_fields = builder.Selections.Difference(builder.Omissions).Keys()
+	}
+
 	switch qType := builder.QueryType; qType {
 	case SelectQuery:
 		sql.WriteString("SELECT ")
@@ -51,17 +63,10 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 		if builder.IsCount {
 			sql.WriteString("COUNT(*) ")
 		} else {
-			cols := builder.Selections
-			if len(cols) == 0 {
-				cols = make([]string, 0)
-				for _, field := range c.Schema.Fields {
-					cols = append(cols, field.Name)
-				}
-			}
 			selBuilder := strings.Builder{}
-			for i, sel := range cols {
+			for i, sel := range target_fields {
 				selBuilder.WriteString(c.parseSelectionField(sel))
-				if i < len(cols)-1 {
+				if i < len(target_fields)-1 {
 					selBuilder.WriteString(",")
 				}
 			}
@@ -99,47 +104,28 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 		}
 
 	case InsertQuery:
-		if len(builder.Selections) > 0 {
-			sql.WriteString("(")
-			for i, key := range builder.Selections {
-				sql.WriteString(c.Schema.FieldsByName[key].DBName)
-				if i < len(builder.Selections)-1 {
-					sql.WriteString(",")
-				}
+		sql.WriteString("(")
+		for i, key := range target_fields {
+			sql.WriteString(c.Schema.FieldsByName[key].DBName)
+			if i < len(target_fields)-1 {
+				sql.WriteString(",")
 			}
-			sql.WriteString(") ")
 		}
+		sql.WriteString(") ")
 		sql.WriteString("VALUES ")
 
-		if len(builder.Selections) > 0 {
-			for i, insertVal := range builder.InsertValues {
-				sql.WriteString("(")
-				for k, key := range builder.Selections {
-					sql.WriteString(c.parseInsertionValuePlaceholder(key))
-					values = append(values, insertVal[key])
-					if k < len(builder.Selections)-1 {
-						sql.WriteString(",")
-					}
-				}
-				sql.WriteString(")")
-				if i < len(builder.InsertValues)-1 {
+		for i, insertVal := range builder.InsertValues {
+			sql.WriteString("(")
+			for k, key := range target_fields {
+				sql.WriteString(c.parseInsertionValuePlaceholder(key))
+				values = append(values, insertVal[key])
+				if k < len(target_fields)-1 {
 					sql.WriteString(",")
 				}
 			}
-		} else {
-			for i, insertVal := range builder.InsertValues {
-				sql.WriteString("(")
-				for k, field := range c.Schema.Fields {
-					sql.WriteString(c.parseInsertionValuePlaceholder(field.Name))
-					values = append(values, insertVal[field.Name])
-					if k < len(c.Schema.Fields)-1 {
-						sql.WriteString(",")
-					}
-				}
-				sql.WriteString(")")
-				if i < len(builder.InsertValues)-1 {
-					sql.WriteString(",")
-				}
+			sql.WriteString(")")
+			if i < len(builder.InsertValues)-1 {
+				sql.WriteString(",")
 			}
 		}
 	}

@@ -348,7 +348,7 @@ func TestModelSelectInsert(t *testing.T) {
 	}
 
 	res = make([]ModelTest, 0)
-	err = db.Model("ModelTest").Where(query.And{
+	err = db.Model("ModelTest").Select("A").Where(query.And{
 		query.Equal{Column: "A", Value: "2"},
 		query.Equal{Column: "B", Value: "1"},
 	}).All(&res)
@@ -356,7 +356,60 @@ func TestModelSelectInsert(t *testing.T) {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
 
-	if len(res) != 1 {
+	if len(res) != 1 || res[0].B != 0 {
+		t.Errorf("Query is wrong")
+	}
+
+	_, err = db.Execute("DROP TABLE model_test;")
+	if err != nil {
+		t.Errorf("Failed to drop table: %s\n", err.Error())
+	}
+}
+
+func TestModelOmitInsert(t *testing.T) {
+	db, err := ConnectWithDSN(DBType_Postgres, "postgresql://johnphua:johnphua@localhost/project")
+	if err != nil {
+		t.Errorf("Failed to connect to db")
+	}
+
+	db.RegisterModel(&ModelTest{})
+
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int DEFAULT 1);")
+	if err != nil {
+		t.Errorf("Failed to create table: %s\n", err.Error())
+	}
+
+	vals := []ModelTest{
+		{A: 1},
+		{A: 2},
+		{A: 1},
+	}
+
+	err = db.Model("ModelTest").Omit("B").Create(vals)
+	if err != nil {
+		t.Errorf("Failed to insert rows: %s\n", err.Error())
+	}
+
+	res := make([]ModelTest, 0)
+	err = db.Model("ModelTest").Where(query.Equal{Column: "A", Value: "1"}).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 2 {
+		t.Errorf("Query is wrong")
+	}
+
+	res = make([]ModelTest, 0)
+	err = db.Model("ModelTest").Omit("B").Where(query.And{
+		query.Equal{Column: "A", Value: "2"},
+		query.Equal{Column: "B", Value: "1"},
+	}).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 1 || res[0].B != 0 {
 		t.Errorf("Query is wrong")
 	}
 

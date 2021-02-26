@@ -208,20 +208,20 @@ func ParseObject(target interface{}, schema Schema) ([]map[string]interface{}, e
 	res := make([]map[string]interface{}, 0)
 	if targetItem.Kind() == reflect.Slice {
 		for i := 0; i < targetItem.Len(); i++ {
-			itemRes := make(map[string]interface{})
 			item := targetItem.Index(i)
-			for _, field := range schema.Fields {
-				itemRes[field.Name] = item.FieldByName(field.Name).Interface()
-			}
-			res = append(res, itemRes)
+			res = append(res, parseStruct(item, schema))
 		}
 	} else if targetItem.Kind() == reflect.Struct {
-		itemRes := make(map[string]interface{})
-		for _, field := range schema.Fields {
-			itemRes[field.Name] = targetItem.FieldByName(field.Name).Interface()
-		}
-		res = append(res, itemRes)
+		res = append(res, parseStruct(targetItem, schema))
 	}
 
 	return res, nil
+}
+
+func parseStruct(targetValue reflect.Value, schema Schema) map[string]interface{} {
+	itemRes := make(map[string]interface{})
+	for _, field := range schema.Fields {
+		itemRes[field.Name] = targetValue.FieldByName(field.Name).Interface()
+	}
+	return itemRes
 }
