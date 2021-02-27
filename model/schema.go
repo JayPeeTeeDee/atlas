@@ -6,6 +6,8 @@ import (
 	"go/ast"
 	"reflect"
 	"strings"
+
+	"github.com/JayPeeTeeDee/atlas/utils"
 )
 
 type DataType string
@@ -26,15 +28,15 @@ const (
 )
 
 type Schema struct {
-	Name                string
-	ModelType           reflect.Type
-	Table               string
-	DBNames             []string
-	PrimaryFields       []*Field
-	PrimaryFieldDBNames []string
-	Fields              []*Field
-	FieldsByName        map[string]*Field
-	FieldsByDBName      map[string]*Field
+	Name              string
+	ModelType         reflect.Type
+	Table             string
+	DBNames           []string
+	PrimaryFields     []*Field
+	PrimaryFieldNames *utils.Set // Used for convenience
+	Fields            []*Field
+	FieldsByName      map[string]*Field
+	FieldsByDBName    map[string]*Field
 }
 
 type Field struct {
@@ -143,11 +145,13 @@ func Parse(target interface{}) (*Schema, error) {
 	}
 
 	schema := &Schema{
-		Name:           modelType.Name(),
-		ModelType:      modelType,
-		Table:          ToSnakeCase(modelType.Name()),
-		FieldsByName:   map[string]*Field{},
-		FieldsByDBName: map[string]*Field{},
+		Name:              modelType.Name(),
+		ModelType:         modelType,
+		Table:             ToSnakeCase(modelType.Name()),
+		FieldsByName:      map[string]*Field{},
+		FieldsByDBName:    map[string]*Field{},
+		PrimaryFields:     make([]*Field, 0),
+		PrimaryFieldNames: utils.NewSet(),
 	}
 
 	for i := 0; i < modelType.NumField(); i++ {
@@ -162,24 +166,13 @@ func Parse(target interface{}) (*Schema, error) {
 		}
 
 		if field.DBName != "" {
-			// nonexistence or shortest path or first appear prioritized if has permission
-			if v, ok := schema.FieldsByDBName[field.DBName]; !ok {
-				if _, ok := schema.FieldsByDBName[field.DBName]; !ok {
-					schema.DBNames = append(schema.DBNames, field.DBName)
-				}
+			if _, ok := schema.FieldsByDBName[field.DBName]; !ok {
+				schema.DBNames = append(schema.DBNames, field.DBName)
 				schema.FieldsByDBName[field.DBName] = field
 				schema.FieldsByName[field.Name] = field
-
-				if v != nil && v.PrimaryKey {
-					for idx, f := range schema.PrimaryFields {
-						if f == v {
-							schema.PrimaryFields = append(schema.PrimaryFields[0:idx], schema.PrimaryFields[idx+1:]...)
-						}
-					}
-				}
-
 				if field.PrimaryKey {
 					schema.PrimaryFields = append(schema.PrimaryFields, field)
+					schema.PrimaryFieldNames.Add(field.Name)
 				}
 			}
 		}

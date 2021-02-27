@@ -479,14 +479,14 @@ func TestSpatialModelInsert(t *testing.T) {
 	}
 
 	res := make([]SpatialModelTest, 0)
-	err = db.Model("SpatialModelTest").Where(query.Equal{Column: "A", Value: "1"}).All(&res)
+	err = db.Model("SpatialModelTest").Where(query.Equal{Column: "B", Value: model.NewLocation(-60.0, 0.0)}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
 
 	if len(res) != 1 {
 		t.Errorf("Query is wrong")
-	} else if !res[0].B.IsEqual(model.NewLocation(-60.0, 0.0)) {
+	} else if !res[0].B.IsEqual(model.NewLocation(-60.0, 0.0)) || res[0].A != 1 {
 		t.Errorf("Query is wrong")
 	}
 
