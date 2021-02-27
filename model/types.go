@@ -3,7 +3,9 @@ package model
 import (
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	geojson "github.com/paulmach/go.geojson"
@@ -45,6 +47,10 @@ func (l Location) Value() (driver.Value, error) {
 	return l.point.Value()
 }
 
+func (l Location) String() string {
+	return fmt.Sprintf("(%f, %f)", l.point.Point[0], l.point.Point[1])
+}
+
 type Region struct {
 	polygon *geojson.Geometry
 }
@@ -81,6 +87,17 @@ func (r Region) Value() (driver.Value, error) {
 		return nil, errors.New("Invalid region representation")
 	}
 	return r.polygon.Value()
+}
+
+func (r Region) String() string {
+	if len(r.polygon.Polygon) == 0 {
+		return ""
+	}
+	strs := make([]string, len(r.polygon.Polygon[0]))
+	for i, point := range r.polygon.Polygon[0] {
+		strs[i] = fmt.Sprintf("(%f, %f)", point[0], point[1])
+	}
+	return fmt.Sprintf("(%s)", strings.Join(strs, ","))
 }
 
 type Timestamp struct {

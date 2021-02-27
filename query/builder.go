@@ -16,6 +16,7 @@ type Type string
 const (
 	SelectQuery Type = "SelectQueryType"
 	InsertQuery Type = "InsertQueryType"
+	UpdateQuery Type = "UpdateQueryType"
 )
 
 type Builder struct {

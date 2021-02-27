@@ -420,7 +420,7 @@ func TestModelOmitInsert(t *testing.T) {
 }
 
 type SpatialModelTest struct {
-	A int
+	A int `atlas:"primarykey"`
 	B model.Location
 	C model.Region
 }
@@ -488,6 +488,162 @@ func TestSpatialModelInsert(t *testing.T) {
 		t.Errorf("Query is wrong")
 	} else if !res[0].B.IsEqual(model.NewLocation(-60.0, 0.0)) || res[0].A != 1 {
 		t.Errorf("Query is wrong")
+	}
+
+	_, err = db.Execute("DROP TABLE spatial_model_test;")
+	if err != nil {
+		t.Errorf("Failed to drop table: %s\n", err.Error())
+	}
+}
+func TestSpatialModelUpdateCustom(t *testing.T) {
+	db, err := ConnectWithDSN(DBType_Postgres, "postgresql://johnphua:johnphua@localhost/project")
+	if err != nil {
+		t.Errorf("Failed to connect to db")
+	}
+
+	db.RegisterModel(&SpatialModelTest{})
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geometry, c geometry);")
+	if err != nil {
+		t.Errorf("Failed to create table: %s\n", err.Error())
+	}
+
+	vals := []SpatialModelTest{
+		{
+			A: 1,
+			B: model.NewLocation(-60.0, 0.0),
+			C: model.NewRegion([][]float64{
+				{-100.0, -100.0},
+				{-100.0, 100.0},
+				{100.0, 100.0},
+				{100.0, -100.0},
+				{-100.0, -100.0},
+			}),
+		},
+		{
+			A: 2,
+			B: model.NewLocation(30.0, 10.0),
+			C: model.NewRegion([][]float64{
+				{-100.0, -100.0},
+				{-100.0, 100.0},
+				{100.0, 100.0},
+				{100.0, -100.0},
+				{-100.0, -100.0},
+			}),
+		},
+		{
+			A: 3,
+			B: model.NewLocation(50.0, 20.0),
+			C: model.NewRegion([][]float64{
+				{-150.0, -150.0},
+				{-150.0, 150.0},
+				{150.0, 150.0},
+				{150.0, -150.0},
+				{-150.0, -150.0},
+			}),
+		},
+	}
+
+	_, err = db.Create(vals)
+	if err != nil {
+		t.Errorf("Failed to insert rows: %s\n", err.Error())
+	}
+
+	updatedVal := vals[0]
+	updatedVal.A = 7
+	_, err = db.Model("SpatialModelTest").Where(query.Equal{Column: "B", Value: model.NewLocation(-60.0, 0.0)}).Update(updatedVal)
+	if err != nil {
+		t.Errorf("Failed to update: %s\n", err.Error())
+	}
+
+	res := make([]SpatialModelTest, 0)
+	err = db.Model("SpatialModelTest").Where(query.Equal{Column: "B", Value: model.NewLocation(-60.0, 0.0)}).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 1 {
+		t.Errorf("Query is wrong (size)")
+	} else if !res[0].B.IsEqual(model.NewLocation(-60.0, 0.0)) || res[0].A != 7 {
+		t.Errorf("Query is wrong (record)")
+	}
+
+	_, err = db.Execute("DROP TABLE spatial_model_test;")
+	if err != nil {
+		t.Errorf("Failed to drop table: %s\n", err.Error())
+	}
+}
+
+func TestSpatialModelUpdatePrimary(t *testing.T) {
+	db, err := ConnectWithDSN(DBType_Postgres, "postgresql://johnphua:johnphua@localhost/project")
+	if err != nil {
+		t.Errorf("Failed to connect to db")
+	}
+
+	db.RegisterModel(&SpatialModelTest{})
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geometry, c geometry);")
+	if err != nil {
+		t.Errorf("Failed to create table: %s\n", err.Error())
+	}
+
+	vals := []SpatialModelTest{
+		{
+			A: 1,
+			B: model.NewLocation(-60.0, 0.0),
+			C: model.NewRegion([][]float64{
+				{-100.0, -100.0},
+				{-100.0, 100.0},
+				{100.0, 100.0},
+				{100.0, -100.0},
+				{-100.0, -100.0},
+			}),
+		},
+		{
+			A: 2,
+			B: model.NewLocation(30.0, 10.0),
+			C: model.NewRegion([][]float64{
+				{-100.0, -100.0},
+				{-100.0, 100.0},
+				{100.0, 100.0},
+				{100.0, -100.0},
+				{-100.0, -100.0},
+			}),
+		},
+		{
+			A: 3,
+			B: model.NewLocation(50.0, 20.0),
+			C: model.NewRegion([][]float64{
+				{-150.0, -150.0},
+				{-150.0, 150.0},
+				{150.0, 150.0},
+				{150.0, -150.0},
+				{-150.0, -150.0},
+			}),
+		},
+	}
+
+	_, err = db.Create(vals)
+	if err != nil {
+		t.Errorf("Failed to insert rows: %s\n", err.Error())
+	}
+
+	updatedVal := vals[0]
+	updatedVal.B = model.NewLocation(-50.0, 15.0)
+	_, err = db.Update(updatedVal)
+	if err != nil {
+		t.Errorf("Failed to update: %s\n", err.Error())
+	}
+
+	res := make([]SpatialModelTest, 0)
+	err = db.Model("SpatialModelTest").Where(query.Equal{Column: "A", Value: 1}).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 1 {
+		t.Errorf("Query is wrong (size)")
+	} else if !res[0].B.IsEqual(model.NewLocation(-50.0, 15.0)) || res[0].A != 1 {
+		t.Errorf("%v", res[0].B)
+		t.Errorf("Query is wrong (record)")
 	}
 
 	_, err = db.Execute("DROP TABLE spatial_model_test;")

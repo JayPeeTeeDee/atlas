@@ -2,6 +2,7 @@ package atlas
 
 import (
 	"database/sql"
+	"errors"
 
 	"github.com/JayPeeTeeDee/atlas/model"
 	"github.com/JayPeeTeeDee/atlas/query"
@@ -113,6 +114,21 @@ func (q *Query) Create(object interface{}) (sql.Result, error) {
 	vals, err := model.ParseObject(object, q.schema)
 	if err != nil {
 		return nil, err
+	}
+	q.builder.InsertValues = vals
+	statement, args := q.compiler.CompileSQL(*q.builder)
+	// TODO: Make use of result
+	return q.database.Execute(statement, args...)
+}
+
+func (q *Query) Update(object interface{}) (sql.Result, error) {
+	q.builder.QueryType = query.UpdateQuery
+	vals, err := model.ParseObject(object, q.schema)
+	if err != nil {
+		return nil, err
+	}
+	if len(vals) > 1 {
+		return nil, errors.New("Can only update 1 record each time")
 	}
 	q.builder.InsertValues = vals
 	statement, args := q.compiler.CompileSQL(*q.builder)

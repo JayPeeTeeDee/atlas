@@ -83,6 +83,15 @@ func (d *Database) Create(object interface{}) (sql.Result, error) {
 	return query.Create(object)
 }
 
+func (d *Database) Update(object interface{}) (sql.Result, error) {
+	schema, err := d.getSchema(object)
+	if err != nil {
+		return nil, err
+	}
+	query := NewQuery(schema, d)
+	return query.Update(object)
+}
+
 func (d *Database) Execute(query string, args ...interface{}) (sql.Result, error) {
 	return d.adapter.Exec(replacePlaceholder(query, d.adapter.Placeholder()), args...)
 }

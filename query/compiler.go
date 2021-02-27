@@ -45,16 +45,22 @@ func (c Compiler) parseInsertionValuePlaceholder(name string) string {
 func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 	sql := strings.Builder{}
 	values := make([]interface{}, 0)
-	var target_fields []string
+	var targetFieldsSet *utils.Set
 	if builder.Selections.Size() == 0 {
-		target_set := utils.NewSet()
+		targetSet := utils.NewSet()
 		for _, field := range c.Schema.Fields {
-			target_set.Add(field.Name)
+			targetSet.Add(field.Name)
 		}
-		target_fields = target_set.Difference(builder.Omissions).Keys()
+		targetFieldsSet = targetSet.Difference(builder.Omissions)
 	} else {
-		target_fields = builder.Selections.Difference(builder.Omissions).Keys()
+		targetFieldsSet = builder.Selections.Difference(builder.Omissions)
 	}
+
+	if builder.QueryType == UpdateQuery && len(builder.Clauses) == 0 {
+		targetFieldsSet = targetFieldsSet.Difference(c.Schema.PrimaryFieldNames)
+	}
+
+	targetFields := targetFieldsSet.Keys()
 
 	switch qType := builder.QueryType; qType {
 	case SelectQuery:
@@ -64,9 +70,9 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 			sql.WriteString("COUNT(*) ")
 		} else {
 			selBuilder := strings.Builder{}
-			for i, sel := range target_fields {
+			for i, sel := range targetFields {
 				selBuilder.WriteString(c.parseSelectionField(sel))
-				if i < len(target_fields)-1 {
+				if i < len(targetFields)-1 {
 					selBuilder.WriteString(",")
 				}
 			}
@@ -78,6 +84,9 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 
 	case InsertQuery:
 		sql.WriteString("INSERT INTO ")
+
+	case UpdateQuery:
+		sql.WriteString("UPDATE ")
 	}
 
 	sql.WriteString(c.Schema.Table + " ")
@@ -105,9 +114,9 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 
 	case InsertQuery:
 		sql.WriteString("(")
-		for i, key := range target_fields {
+		for i, key := range targetFields {
 			sql.WriteString(c.Schema.FieldsByName[key].DBName)
-			if i < len(target_fields)-1 {
+			if i < len(targetFields)-1 {
 				sql.WriteString(",")
 			}
 		}
@@ -116,10 +125,10 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 
 		for i, insertVal := range builder.InsertValues {
 			sql.WriteString("(")
-			for k, key := range target_fields {
+			for k, key := range targetFields {
 				sql.WriteString(c.parseInsertionValuePlaceholder(key))
 				values = append(values, insertVal[key])
-				if k < len(target_fields)-1 {
+				if k < len(targetFields)-1 {
 					sql.WriteString(",")
 				}
 			}
@@ -127,6 +136,36 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 			if i < len(builder.InsertValues)-1 {
 				sql.WriteString(",")
 			}
+		}
+	case UpdateQuery:
+		insertVal := builder.InsertValues[0]
+		sql.WriteString("SET ")
+		for i, key := range targetFields {
+			sql.WriteString(c.Schema.FieldsByName[key].DBName)
+			sql.WriteString(" = ")
+			sql.WriteString(c.parseInsertionValuePlaceholder(key))
+			values = append(values, insertVal[key])
+			if i < len(targetFields)-1 {
+				sql.WriteString(",")
+			}
+		}
+		sql.WriteString(" WHERE ")
+		if len(builder.Clauses) > 0 {
+			clause := builder.Clauses[0]
+			if len(builder.Clauses) > 1 {
+				clause = append(And{}, builder.Clauses...)
+			}
+			clauseSql, clauseValues := clause.Sql(c.Schema.FieldsByName, c.SpatialType)
+			sql.WriteString(clauseSql)
+			values = append(values, clauseValues...)
+		} else {
+			primaryClauses := And{}
+			for _, field := range c.Schema.PrimaryFields {
+				primaryClauses = append(primaryClauses, Equal{Column: field.Name, Value: insertVal[field.Name]})
+			}
+			clauseSql, clauseValues := primaryClauses.Sql(c.Schema.FieldsByName, c.SpatialType)
+			sql.WriteString(clauseSql)
+			values = append(values, clauseValues...)
 		}
 	}
 	sql.WriteString(";")
