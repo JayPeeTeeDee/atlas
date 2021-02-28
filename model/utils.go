@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func ParseTagSetting(str string, sep string) map[string]string {
+func parseTagSetting(str string, sep string) map[string]string {
 	settings := map[string]string{}
 	names := strings.Split(str, sep)
 
@@ -37,7 +37,7 @@ func ParseTagSetting(str string, sep string) map[string]string {
 	return settings
 }
 
-func CheckTruth(val interface{}) bool {
+func checkTruth(val interface{}) bool {
 	if v, ok := val.(bool); ok {
 		return v
 	}
@@ -55,7 +55,7 @@ var (
 	matchAllCapRe   = regexp.MustCompile("([a-z0-9])([A-Z])")
 )
 
-func ToSnakeCase(str string) string {
+func toSnakeCase(str string) string {
 	snake := matchFirstCapRe.ReplaceAllString(str, "${1}_${2}")
 	snake = matchAllCapRe.ReplaceAllString(snake, "${1}_${2}")
 	return strings.ToLower(snake)

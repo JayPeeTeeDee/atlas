@@ -66,7 +66,7 @@ func (schema *Schema) ParseField(fieldStruct reflect.StructField) *Field {
 		IndirectFieldType: fieldStruct.Type,
 		StructField:       fieldStruct,
 		Tag:               fieldStruct.Tag,
-		TagSettings:       ParseTagSetting(fieldStruct.Tag.Get("atlas"), ";"),
+		TagSettings:       parseTagSetting(fieldStruct.Tag.Get("atlas"), ";"),
 	}
 	for field.IndirectFieldType.Kind() == reflect.Ptr {
 		field.IndirectFieldType = field.IndirectFieldType.Elem()
@@ -78,19 +78,19 @@ func (schema *Schema) ParseField(fieldStruct reflect.StructField) *Field {
 		field.DBName = dbName
 	}
 
-	if val, ok := field.TagSettings["PRIMARYKEY"]; ok && CheckTruth(val) {
+	if val, ok := field.TagSettings["PRIMARYKEY"]; ok && checkTruth(val) {
 		field.PrimaryKey = true
 	}
 
-	if val, ok := field.TagSettings["AUTOINCREMENT"]; ok && CheckTruth(val) {
+	if val, ok := field.TagSettings["AUTOINCREMENT"]; ok && checkTruth(val) {
 		field.AutoIncrement = true
 	}
 
-	if val, ok := field.TagSettings["NOT NULL"]; ok && CheckTruth(val) {
+	if val, ok := field.TagSettings["NOT NULL"]; ok && checkTruth(val) {
 		field.NotNull = true
 	}
 
-	if val, ok := field.TagSettings["UNIQUE"]; ok && CheckTruth(val) {
+	if val, ok := field.TagSettings["UNIQUE"]; ok && checkTruth(val) {
 		field.Unique = true
 	}
 
@@ -151,7 +151,7 @@ func Parse(target interface{}) (*Schema, error) {
 	schema := &Schema{
 		Name:               modelType.Name(),
 		ModelType:          modelType,
-		Table:              ToSnakeCase(modelType.Name()),
+		Table:              toSnakeCase(modelType.Name()),
 		FieldsByName:       map[string]*Field{},
 		FieldsByDBName:     map[string]*Field{},
 		PrimaryFields:      make([]*Field, 0),
@@ -169,7 +169,7 @@ func Parse(target interface{}) (*Schema, error) {
 
 	for _, field := range schema.Fields {
 		if field.DBName == "" && field.DataType != "" {
-			field.DBName = ToSnakeCase(field.Name)
+			field.DBName = toSnakeCase(field.Name)
 		}
 
 		if field.DBName != "" {
