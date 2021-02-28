@@ -93,7 +93,16 @@ type NotEqual struct {
 }
 
 func (e NotEqual) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	return fmt.Sprintf("%s <> ?", fields[e.Column].DBName), []interface{}{e.Value}
+	switch fields[e.Column].DataType {
+	case model.LocationType, model.RegionType:
+		if spatialType == adapter.PostGisExtension {
+			return fmt.Sprintf("NOT ST_Equals(%s::geometry, ST_GeomFromGeoJSON(?))", fields[e.Column].DBName), []interface{}{e.Value}
+		} else {
+			return fmt.Sprintf("%s <> ?", fields[e.Column].DBName), []interface{}{e.Value}
+		}
+	default:
+		return fmt.Sprintf("%s <> ?", fields[e.Column].DBName), []interface{}{e.Value}
+	}
 }
 
 func (e NotEqual) Condition() string {
