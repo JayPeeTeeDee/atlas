@@ -47,6 +47,7 @@ func TestRawQuery(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 
 type ModelTest struct {
@@ -99,6 +100,7 @@ func TestModelSingleQuery(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 
 func TestModelSelectQuery(t *testing.T) {
@@ -163,6 +165,7 @@ func TestModelSelectQuery(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 
 func TestModelAllQuery(t *testing.T) {
@@ -210,6 +213,7 @@ func TestModelAllQuery(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 
 func TestModelSingleInsert(t *testing.T) {
@@ -259,6 +263,7 @@ func TestModelSingleInsert(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 func TestModelMultiInsert(t *testing.T) {
 	db, err := ConnectWithDSN(DBType_Postgres, "postgresql://johnphua:johnphua@localhost/project")
@@ -311,6 +316,7 @@ func TestModelMultiInsert(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 
 func TestModelSelectInsert(t *testing.T) {
@@ -364,6 +370,7 @@ func TestModelSelectInsert(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 
 func TestModelOmitInsert(t *testing.T) {
@@ -417,6 +424,7 @@ func TestModelOmitInsert(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 
 type SpatialModelTest struct {
@@ -494,6 +502,7 @@ func TestSpatialModelInsert(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 func TestSpatialModelUpdateCustom(t *testing.T) {
 	db, err := ConnectWithDSN(DBType_Postgres, "postgresql://johnphua:johnphua@localhost/project")
@@ -571,6 +580,7 @@ func TestSpatialModelUpdateCustom(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 
 func TestSpatialModelUpdatePrimary(t *testing.T) {
@@ -650,6 +660,7 @@ func TestSpatialModelUpdatePrimary(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }
 
 type SimpleSpatialModelTest struct {
@@ -709,4 +720,5 @@ func TestSimpleSpatialModelCoverQuery(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
+	db.Disconnect()
 }

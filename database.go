@@ -45,6 +45,10 @@ func ConnectWithDSN(dbType DatabaseType, dsn string) (*Database, error) {
 	return &Database{databaseType: dbType, adapter: db_adapter, schemas: make(map[string]model.Schema)}, nil
 }
 
+func (d *Database) Disconnect() error {
+	return d.adapter.Disconnect()
+}
+
 func (d *Database) RegisterModel(target interface{}) error {
 	schema, err := model.Parse(target)
 	if err != nil {
