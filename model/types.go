@@ -11,6 +11,11 @@ import (
 	geojson "github.com/paulmach/go.geojson"
 )
 
+type SpatialObject interface {
+	IsLocation() bool
+	IsRegion() bool
+}
+
 type Location struct {
 	point *geojson.Geometry
 }
@@ -49,6 +54,14 @@ func (l Location) Value() (driver.Value, error) {
 
 func (l Location) String() string {
 	return fmt.Sprintf("(%f, %f)", l.point.Point[0], l.point.Point[1])
+}
+
+func (l Location) IsLocation() bool {
+	return true
+}
+
+func (l Location) IsRegion() bool {
+	return false
 }
 
 type Region struct {
@@ -98,6 +111,14 @@ func (r Region) String() string {
 		strs[i] = fmt.Sprintf("(%f, %f)", point[0], point[1])
 	}
 	return fmt.Sprintf("(%s)", strings.Join(strs, ","))
+}
+
+func (r Region) IsLocation() bool {
+	return false
+}
+
+func (r Region) IsRegion() bool {
+	return true
 }
 
 type Timestamp struct {

@@ -126,6 +126,99 @@ func (e NotLike) Condition() string {
 	return "NOT LIKE"
 }
 
+// Geography specific clauses
+type CoveredBy struct {
+	Column string
+	Target model.SpatialObject
+}
+
+func (c CoveredBy) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	if spatialType == adapter.PostGisExtension {
+		return fmt.Sprintf("ST_Covers(ST_GeomFromGeoJSON(?)::geography, %s)", fields[c.Column].DBName), []interface{}{c.Target}
+	} else {
+		// Not implemented
+		return "", []interface{}{}
+	}
+}
+
+func (c CoveredBy) Condition() string {
+	return "CoveredBy"
+}
+
+type Covers struct {
+	Column string
+	Target model.SpatialObject
+}
+
+func (c Covers) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	if spatialType == adapter.PostGisExtension {
+		return fmt.Sprintf("ST_Covers(%s, ST_GeomFromGeoJSON(?)::geography)", fields[c.Column].DBName), []interface{}{c.Target}
+	} else {
+		// Not implemented
+		return "", []interface{}{}
+	}
+}
+
+func (c Covers) Condition() string {
+	return "Covers"
+}
+
+type WithinRangeOf struct {
+	Column  string
+	Targets []model.SpatialObject
+	Range   float64
+}
+
+func (w WithinRangeOf) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	if spatialType == adapter.PostGisExtension {
+		sql := strings.Builder{}
+		vals := []interface{}{}
+		for i, targetObj := range w.Targets {
+			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", fields[w.Column].DBName))
+			vals = append(vals, targetObj, w.Range)
+			if i < len(w.Targets)-1 {
+				sql.WriteString(" OR ")
+			}
+		}
+		return sql.String(), vals
+	} else {
+		// Not implemented
+		return "", []interface{}{}
+	}
+}
+
+func (w WithinRangeOf) Condition() string {
+	return "WithinRangeOf"
+}
+
+type HasWithinRange struct {
+	Column  string
+	Targets []model.SpatialObject
+	Range   float64
+}
+
+func (h HasWithinRange) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+	if spatialType == adapter.PostGisExtension {
+		sql := strings.Builder{}
+		vals := []interface{}{}
+		for i, targetObj := range h.Targets {
+			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", fields[h.Column].DBName))
+			vals = append(vals, targetObj, h.Range)
+			if i < len(h.Targets)-1 {
+				sql.WriteString(" AND ")
+			}
+		}
+		return sql.String(), vals
+	} else {
+		// Not implemented
+		return "", []interface{}{}
+	}
+}
+
+func (h HasWithinRange) Condition() string {
+	return "HasWithinRange"
+}
+
 type Or []Clause
 
 func (e Or) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {

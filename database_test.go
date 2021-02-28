@@ -651,3 +651,62 @@ func TestSpatialModelUpdatePrimary(t *testing.T) {
 		t.Errorf("Failed to drop table: %s\n", err.Error())
 	}
 }
+
+type SimpleSpatialModelTest struct {
+	A int `atlas:"primarykey"`
+	B model.Location
+}
+
+func TestSimpleSpatialModelCoverQuery(t *testing.T) {
+	db, err := ConnectWithDSN(DBType_Postgres, "postgresql://johnphua:johnphua@localhost/project")
+	if err != nil {
+		t.Errorf("Failed to connect to db")
+	}
+
+	db.RegisterModel(&SimpleSpatialModelTest{})
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS simple_spatial_model_test (a int PRIMARY KEY, b geography);")
+	if err != nil {
+		t.Errorf("Failed to create table: %s\n", err.Error())
+	}
+
+	vals := []SimpleSpatialModelTest{
+		{
+			A: 1,
+			B: model.NewLocation(-60.0, 0.0),
+		},
+		{
+			A: 2,
+			B: model.NewLocation(30.0, 10.0),
+		},
+		{
+			A: 3,
+			B: model.NewLocation(50.0, 20.0),
+		},
+	}
+
+	_, err = db.Create(vals)
+	if err != nil {
+		t.Errorf("Failed to insert rows: %s\n", err.Error())
+	}
+
+	res := make([]SpatialModelTest, 0)
+	err = db.Model("SimpleSpatialModelTest").CoveredBy(model.NewRegion([][]float64{
+		{-50.0, -50.0},
+		{-50.0, 50.0},
+		{50.0, 50.0},
+		{50.0, -50.0},
+		{-50.0, -50.0},
+	})).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 2 {
+		t.Errorf("Query is wrong")
+	}
+
+	_, err = db.Execute("DROP TABLE simple_spatial_model_test;")
+	if err != nil {
+		t.Errorf("Failed to drop table: %s\n", err.Error())
+	}
+}

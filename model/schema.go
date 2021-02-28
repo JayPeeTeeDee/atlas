@@ -28,15 +28,19 @@ const (
 )
 
 type Schema struct {
-	Name              string
-	ModelType         reflect.Type
-	Table             string
-	DBNames           []string
-	PrimaryFields     []*Field
-	PrimaryFieldNames *utils.Set // Used for convenience
-	Fields            []*Field
-	FieldsByName      map[string]*Field
-	FieldsByDBName    map[string]*Field
+	Name           string
+	ModelType      reflect.Type
+	Table          string
+	DBNames        []string
+	PrimaryFields  []*Field
+	Fields         []*Field
+	FieldsByName   map[string]*Field
+	FieldsByDBName map[string]*Field
+
+	AllFieldNames      *utils.Set
+	PrimaryFieldNames  *utils.Set // Used for convenience
+	LocationFieldNames *utils.Set
+	RegionFieldNames   *utils.Set
 }
 
 type Field struct {
@@ -145,13 +149,16 @@ func Parse(target interface{}) (*Schema, error) {
 	}
 
 	schema := &Schema{
-		Name:              modelType.Name(),
-		ModelType:         modelType,
-		Table:             ToSnakeCase(modelType.Name()),
-		FieldsByName:      map[string]*Field{},
-		FieldsByDBName:    map[string]*Field{},
-		PrimaryFields:     make([]*Field, 0),
-		PrimaryFieldNames: utils.NewSet(),
+		Name:               modelType.Name(),
+		ModelType:          modelType,
+		Table:              ToSnakeCase(modelType.Name()),
+		FieldsByName:       map[string]*Field{},
+		FieldsByDBName:     map[string]*Field{},
+		PrimaryFields:      make([]*Field, 0),
+		AllFieldNames:      utils.NewSet(),
+		PrimaryFieldNames:  utils.NewSet(),
+		LocationFieldNames: utils.NewSet(),
+		RegionFieldNames:   utils.NewSet(),
 	}
 
 	for i := 0; i < modelType.NumField(); i++ {
@@ -174,6 +181,12 @@ func Parse(target interface{}) (*Schema, error) {
 					schema.PrimaryFields = append(schema.PrimaryFields, field)
 					schema.PrimaryFieldNames.Add(field.Name)
 				}
+				if field.DataType == LocationType {
+					schema.LocationFieldNames.Add(field.Name)
+				} else if field.DataType == RegionType {
+					schema.RegionFieldNames.Add(field.Name)
+				}
+				schema.AllFieldNames.Add(field.Name)
 			}
 		}
 
