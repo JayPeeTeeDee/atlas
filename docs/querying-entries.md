@@ -52,13 +52,13 @@ For INSERT queries, terminal methods will also return any error encountered when
 | `First(response interface{}) error` | Get only the first entry | `First(&car)` |
 | `All(response interface{}) error` | Get all entries | `All(&cars)`|
 
-### Filter Clauses
+## Filter Clauses
 Filter clauses are used to specify conditions for the `Where` chaining method. 
 These are structs that can be instantiated and passed as the paramter to the `Where` method.
 
-#### Basic Conditional Clauses
+### Basic Conditional Clauses
 The following clauses are used to compare entries against values
-##### Equal
+#### Equal
 Get entries where model.Column is equal to Value
 - Parameters:
   - Column: Field name of model to compare
@@ -67,7 +67,7 @@ Get entries where model.Column is equal to Value
   - `Equal{Column: "Id", Value: 1}`
   - `Equal{Column: "Location", Value: model.NewLocation(...)}`
   
-##### NotEqual
+#### NotEqual
 Get entries where model.Column is not equal to Value
 - Parameters:
   - Column: Field name of model to compare
@@ -76,7 +76,7 @@ Get entries where model.Column is not equal to Value
   - `NotEqual{Column: "Id", Value: 1}`
   - `NotEqual{Column: "Location", Value: model.NewLocation(...)}`
   
-##### GreaterThan
+#### GreaterThan
 Get entries where model.Column is greater than Value
 - Parameters:
   - Column: Field name of model to compare
@@ -84,7 +84,7 @@ Get entries where model.Column is greater than Value
 - Example:
   - `GreaterThan{Column: "Id", Value: 1}`
   
-##### GreaterThanOrEqual
+#### GreaterThanOrEqual
 Get entries where model.Column is greater than or equal to Value
 - Parameters:
   - Column: Field name of model to compare
@@ -92,7 +92,7 @@ Get entries where model.Column is greater than or equal to Value
 - Example:
    - `GreaterThanOrEqual{Column: "Id", Value: 1}`
 
-##### LessThan
+#### LessThan
 Get entries where model.Column is less than Value
 - Parameters:
   - Column: Field name of model to compare
@@ -100,7 +100,7 @@ Get entries where model.Column is less than Value
 - Example:
   - `LessThan{Column: "Id", Value: 1}`
   
-##### LessThanOrEqual
+#### LessThanOrEqual
 Get entries where model.Column is less than or equal to Value
 - Parameters:
   - Column: Field name of model to compare
@@ -108,7 +108,7 @@ Get entries where model.Column is less than or equal to Value
 - Example:
   - `LessThanOrEqual{Column: "Id", Value: 1}`
 
-##### Like
+#### Like
 Get entries where model.Column matches the given pattern (only for strings)
 - Parameters:
   - Column: Field name of model to compare (of string type)
@@ -116,7 +116,7 @@ Get entries where model.Column matches the given pattern (only for strings)
 - Example:
   - `Like{Column: "Name", Value: "jo_"}`
   
-##### NotLike
+#### NotLike
 Get entries where model.Column does not match the given pattern (only for strings)
 - Parameters:
   - Column: Field name of model to compare (of string type)
@@ -124,10 +124,10 @@ Get entries where model.Column does not match the given pattern (only for string
 - Example:
   - `NotLike{Column: "Name", Value: "jo_"}`
  
-#### Spatial Conditional Clauses
+### Spatial Conditional Clauses
 The following clauses are used to compare spatial fields against spatial values
 
-##### CoveredBy
+#### CoveredBy
 Get entries where model.Column is covered by the target spatial object (`Location` or `Region`)
 - Parameters:
   - Column: Field name of model to compare
@@ -135,7 +135,7 @@ Get entries where model.Column is covered by the target spatial object (`Locatio
 - Example:
   - `CoveredBy{Column: "OperationZone", Target: model.NewRegion(...)}`
  
-##### Covers
+#### Covers
 Get entries where model.Column covers the target spatial object (`Location` or `Region`)
 - Parameters:
   - Column: Field name of model to compare
@@ -143,7 +143,7 @@ Get entries where model.Column covers the target spatial object (`Location` or `
 - Example:
   - `Covers{Column: "OperationZone", Target: model.NewRegion(...)}`
   
-##### WithinRangeOf
+#### WithinRangeOf
 Get entries where model.Column is within range of _any_ of the target objects (`Location` or `Region`)
 - Parameters:
   - Column: Field name of model to compare
@@ -152,7 +152,7 @@ Get entries where model.Column is within range of _any_ of the target objects (`
 - Example:
   - `WithinRangeOf{Column: "OperationZone", Targets: []model.Location{...}}`
  
-##### HasWithinRange
+#### HasWithinRange
 Get entries where model.Column is within range of _all_ the target objects (`Location` or `Region`)
 - Parameters:
   - Column: Field name of model to compare
@@ -161,15 +161,15 @@ Get entries where model.Column is within range of _all_ the target objects (`Loc
 - Example:
   - `HasWithinRange{Column: "OperationZone", Targets: []model.Location{...}}`
   
-#### Combination Clauses
+### Combination Clauses
 The following clauses are used to combine different conditional clauses together.
 
-##### And
+#### And
 Get entries that satisfy all clauses
 - Example:
   - `And{Equal{...}, Covers{...}}`
  
-##### Or
+#### Or
 Get entries that satisfy any of the clauses
 - Example:
   - `Or{Equal{...}, Covers{...}}`

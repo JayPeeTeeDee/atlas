@@ -24,6 +24,7 @@ type Car struct {
 }
 
 func main() {
+	// Connect to database
 	db, err := atlas.ConnectWithDSN(atlas.DBType_Postgres, "postgresql://username:password@localhost/database")
 	if err != nil {
 		fmt.Fprint(os.Stderr, "Unable to connect to database")
@@ -38,8 +39,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Register models for ORM to recognise
 	db.RegisterModel(&Car{})
 
+	// Create entries in database
 	cars := []Car{
 		{Id: 1, Location: model.NewLocation(103.81, 1.30), Brand: "Toyota", Model: "Corolla Altis"},
 		{Id: 2, Location: model.NewLocation(101.97, 4.3), Brand: "Mitsubishi", Model: "Lancer"},
@@ -50,6 +53,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Querying entries from database
 	carsInRegion := make([]Car, 0)
 	err = db.Model("Car").CoveredBy(model.NewRegion(
 		[][]float64{
