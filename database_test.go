@@ -432,7 +432,7 @@ func TestSpatialModelInsert(t *testing.T) {
 	}
 
 	db.RegisterModel(&SpatialModelTest{})
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geometry, c geometry);")
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geography, c geography);")
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -502,7 +502,7 @@ func TestSpatialModelUpdateCustom(t *testing.T) {
 	}
 
 	db.RegisterModel(&SpatialModelTest{})
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geometry, c geometry);")
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geography, c geography);")
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -580,7 +580,7 @@ func TestSpatialModelUpdatePrimary(t *testing.T) {
 	}
 
 	db.RegisterModel(&SpatialModelTest{})
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geometry, c geometry);")
+	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geography, c geography);")
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}

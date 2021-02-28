@@ -48,7 +48,7 @@ func (e Equal) Sql(fields map[string]*model.Field, spatialType adapter.SpatialEx
 	switch fields[e.Column].DataType {
 	case model.LocationType, model.RegionType:
 		if spatialType == adapter.PostGisExtension {
-			return fmt.Sprintf("ST_Equals(%s, ST_GeomFromGeoJSON(?))", fields[e.Column].DBName), []interface{}{e.Value}
+			return fmt.Sprintf("ST_Equals(%s::geometry, ST_GeomFromGeoJSON(?))", fields[e.Column].DBName), []interface{}{e.Value}
 		} else {
 			return fmt.Sprintf("%s = ?", fields[e.Column].DBName), []interface{}{e.Value}
 		}

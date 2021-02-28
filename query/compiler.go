@@ -33,7 +33,7 @@ func (c Compiler) parseInsertionValuePlaceholder(name string) string {
 	switch field.DataType {
 	case model.LocationType, model.RegionType:
 		if c.SpatialType == adapter.PostGisExtension {
-			return "ST_GeomFromGeoJSON(?)"
+			return "ST_GeomFromGeoJSON(?)::geography"
 		} else {
 			return "?"
 		}
