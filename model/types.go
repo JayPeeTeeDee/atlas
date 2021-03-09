@@ -69,9 +69,23 @@ type Region struct {
 }
 
 func NewRegion(coords [][]float64) Region {
+	// Complete coords chain if missing
+	if !coordsEqual(coords[0], coords[len(coords)-1]) {
+		coords = append(coords, coords[0])
+	}
 	poly := make([][][]float64, 0)
 	poly = append(poly, coords)
 	return Region{geojson.NewPolygonGeometry(poly)}
+}
+
+// Convenience functions for Region construction
+func NewRectRegion(minLon float64, maxLon float64, minLat float64, maxLat float64) Region {
+	poly := make([][]float64, 0)
+	poly = append(poly, []float64{minLon, minLat})
+	poly = append(poly, []float64{minLon, maxLat})
+	poly = append(poly, []float64{maxLon, maxLat})
+	poly = append(poly, []float64{maxLon, minLat})
+	return NewRegion(poly)
 }
 
 func (r *Region) IsEqual(other Region) bool {

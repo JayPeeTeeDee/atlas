@@ -50,6 +50,18 @@ func checkTruth(val interface{}) bool {
 	return !reflect.ValueOf(val).IsZero()
 }
 
+func coordsEqual(a, b []float64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 var (
 	matchFirstCapRe = regexp.MustCompile("(.)([A-Z][a-z]+)")
 	matchAllCapRe   = regexp.MustCompile("([a-z0-9])([A-Z])")

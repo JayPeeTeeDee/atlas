@@ -449,13 +449,7 @@ func TestSpatialModelInsert(t *testing.T) {
 		{
 			A: 1,
 			B: model.NewLocation(-60.0, 0.0),
-			C: model.NewRegion([][]float64{
-				{-100.0, -100.0},
-				{-100.0, 100.0},
-				{100.0, 100.0},
-				{100.0, -100.0},
-				{-100.0, -100.0},
-			}),
+			C: model.NewRectRegion(-100.0, 100.0, -100.0, 100.0),
 		},
 		{
 			A: 2,
@@ -465,7 +459,6 @@ func TestSpatialModelInsert(t *testing.T) {
 				{-100.0, 100.0},
 				{100.0, 100.0},
 				{100.0, -100.0},
-				{-100.0, -100.0},
 			}),
 		},
 		{
@@ -604,7 +597,6 @@ func TestSpatialModelUpdatePrimary(t *testing.T) {
 				{-100.0, 100.0},
 				{100.0, 100.0},
 				{100.0, -100.0},
-				{-100.0, -100.0},
 			}),
 		},
 		{
@@ -615,7 +607,6 @@ func TestSpatialModelUpdatePrimary(t *testing.T) {
 				{-100.0, 100.0},
 				{100.0, 100.0},
 				{100.0, -100.0},
-				{-100.0, -100.0},
 			}),
 		},
 		{
@@ -626,7 +617,6 @@ func TestSpatialModelUpdatePrimary(t *testing.T) {
 				{-150.0, 150.0},
 				{150.0, 150.0},
 				{150.0, -150.0},
-				{-150.0, -150.0},
 			}),
 		},
 	}
@@ -701,13 +691,7 @@ func TestSimpleSpatialModelCoverQuery(t *testing.T) {
 	}
 
 	res := make([]SpatialModelTest, 0)
-	err = db.Model("SimpleSpatialModelTest").CoveredBy(model.NewRegion([][]float64{
-		{-50.0, -50.0},
-		{-50.0, 50.0},
-		{50.0, 50.0},
-		{50.0, -50.0},
-		{-50.0, -50.0},
-	})).All(&res)
+	err = db.Model("SimpleSpatialModelTest").CoveredBy(model.NewRectRegion(-50.0, 50.0, -50.0, 50.0)).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
