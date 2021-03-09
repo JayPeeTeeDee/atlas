@@ -32,7 +32,7 @@ func NewQuery(schema model.Schema, database *Database) *Query {
 		builder:  query.NewBuilder(),
 		database: database,
 		compiler: &query.Compiler{
-			SpatialType: database.adapter.SpatialType(),
+			AdapterInfo: database.adapter,
 			Schema:      schema,
 		},
 		buildErrors: make([]error, 0),

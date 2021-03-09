@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/JayPeeTeeDee/atlas/adapter"
 	"github.com/JayPeeTeeDee/atlas/model"
@@ -97,21 +96,9 @@ func (d *Database) Update(object interface{}) (sql.Result, error) {
 }
 
 func (d *Database) Execute(query string, args ...interface{}) (sql.Result, error) {
-	return d.adapter.Exec(replacePlaceholder(query, d.adapter.Placeholder()), args...)
+	return d.adapter.Exec(query, args...)
 }
 
 func (d *Database) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	return d.adapter.Query(replacePlaceholder(query, d.adapter.Placeholder()), args...)
-}
-
-func replacePlaceholder(sqlString string, style adapter.PlaceholderStyle) string {
-	switch style {
-	case adapter.DollarPlaceholder:
-		for nParam := 1; strings.Contains(sqlString, "?"); nParam++ {
-			sqlString = strings.Replace(sqlString, "?", fmt.Sprintf("$%d", nParam), 1)
-		}
-	default:
-		return sqlString
-	}
-	return sqlString
+	return d.adapter.Query(query, args...)
 }

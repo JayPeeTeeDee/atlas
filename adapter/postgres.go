@@ -46,3 +46,7 @@ func (p PostgresAdapter) Placeholder() PlaceholderStyle {
 func (p PostgresAdapter) SpatialType() SpatialExtension {
 	return PostGisExtension
 }
+
+func (p PostgresAdapter) DatabaseType() DbType {
+	return PostgreSQL
+}

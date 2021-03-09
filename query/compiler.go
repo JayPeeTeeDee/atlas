@@ -10,7 +10,7 @@ import (
 )
 
 type Compiler struct {
-	SpatialType adapter.SpatialExtension
+	AdapterInfo adapter.AdapterInfo
 	Schema      model.Schema
 }
 
@@ -18,7 +18,7 @@ func (c Compiler) parseSelectionField(name string) string {
 	field := c.Schema.FieldsByName[name]
 	switch field.DataType {
 	case model.LocationType, model.RegionType:
-		if c.SpatialType == adapter.PostGisExtension {
+		if c.AdapterInfo.SpatialType() == adapter.PostGisExtension {
 			return fmt.Sprintf("ST_AsGeoJSON(%s) as %s", field.DBName, field.DBName)
 		} else {
 			return field.DBName
@@ -32,7 +32,7 @@ func (c Compiler) parseInsertionValuePlaceholder(name string) string {
 	field := c.Schema.FieldsByName[name]
 	switch field.DataType {
 	case model.LocationType, model.RegionType:
-		if c.SpatialType == adapter.PostGisExtension {
+		if c.AdapterInfo.SpatialType() == adapter.PostGisExtension {
 			return "ST_GeomFromGeoJSON(?)::geography"
 		} else {
 			return "?"
@@ -99,7 +99,7 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 			if len(builder.Clauses) > 1 {
 				clause = append(And{}, builder.Clauses...)
 			}
-			clauseSql, clauseValues := clause.Sql(c.Schema.FieldsByName, c.SpatialType)
+			clauseSql, clauseValues := clause.Sql(c.Schema.FieldsByName, c.AdapterInfo.SpatialType())
 			sql.WriteString(clauseSql)
 			values = append(values, clauseValues...)
 		}
@@ -155,7 +155,7 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 			if len(builder.Clauses) > 1 {
 				clause = append(And{}, builder.Clauses...)
 			}
-			clauseSql, clauseValues := clause.Sql(c.Schema.FieldsByName, c.SpatialType)
+			clauseSql, clauseValues := clause.Sql(c.Schema.FieldsByName, c.AdapterInfo.SpatialType())
 			sql.WriteString(clauseSql)
 			values = append(values, clauseValues...)
 		} else {
@@ -163,11 +163,22 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 			for _, field := range c.Schema.PrimaryFields {
 				primaryClauses = append(primaryClauses, Equal{Column: field.Name, Value: insertVal[field.Name]})
 			}
-			clauseSql, clauseValues := primaryClauses.Sql(c.Schema.FieldsByName, c.SpatialType)
+			clauseSql, clauseValues := primaryClauses.Sql(c.Schema.FieldsByName, c.AdapterInfo.SpatialType())
 			sql.WriteString(clauseSql)
 			values = append(values, clauseValues...)
 		}
 	}
 	sql.WriteString(";")
-	return sql.String(), values
+	return replacePlaceholder(sql.String(), c.AdapterInfo.Placeholder()), values
+}
+func replacePlaceholder(sqlString string, style adapter.PlaceholderStyle) string {
+	switch style {
+	case adapter.DollarPlaceholder:
+		for nParam := 1; strings.Contains(sqlString, "?"); nParam++ {
+			sqlString = strings.Replace(sqlString, "?", fmt.Sprintf("$%d", nParam), 1)
+		}
+	default:
+		return sqlString
+	}
+	return sqlString
 }
