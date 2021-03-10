@@ -1,7 +1,10 @@
 package query
 
 import (
+	"bytes"
+	"database/sql/driver"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/JayPeeTeeDee/atlas/adapter"
@@ -171,6 +174,111 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 	sql.WriteString(";")
 	return replacePlaceholder(sql.String(), c.AdapterInfo.Placeholder()), values
 }
+
+func (c Compiler) CompileTableCreation(ifNotExists bool) string {
+	sql := strings.Builder{}
+	sql.WriteString("CREATE TABLE ")
+	if ifNotExists {
+		sql.WriteString("IF NOT EXISTS ")
+	}
+	sql.WriteString(c.Schema.Table)
+	sql.WriteString(" (")
+
+	for i, field := range c.Schema.Fields {
+		sql.WriteString(field.DBName)
+		sql.WriteString(" ")
+		sql.WriteString(c.parseFieldType(field))
+		qualifiers := c.parseFieldQualifiers(field)
+		sql.WriteString(qualifiers)
+		if i < len(c.Schema.Fields)-1 {
+			sql.WriteString(", ")
+		}
+	}
+
+	sql.WriteString(");")
+
+	return replacePlaceholder(sql.String(), c.AdapterInfo.Placeholder())
+}
+
+func (c Compiler) parseFieldQualifiers(field *model.Field) string {
+	qualifiers := strings.Builder{}
+	switch c.AdapterInfo.DatabaseType() {
+	case adapter.PostgreSQL:
+		if field.PrimaryKey {
+			qualifiers.WriteString(" PRIMARY KEY")
+		} else {
+			if field.NotNull {
+				qualifiers.WriteString(" NOT NULL")
+			}
+			if field.Unique {
+				qualifiers.WriteString(" UNIQUE")
+			}
+		}
+		if !field.AutoIncrement && field.HasDefaultValue {
+			if field.DefaultValue == nil {
+				qualifiers.WriteString(" DEFAULT NULL")
+			} else {
+				switch v := field.DefaultValue.(type) {
+				case model.Location, model.Region:
+					val, err := v.(driver.Valuer).Value()
+					if err == nil {
+						switch c.AdapterInfo.SpatialType() {
+						case adapter.PostGisExtension:
+							geom := bytes.NewBuffer(val.([]uint8))
+							qualifiers.WriteString(fmt.Sprintf(" DEFAULT ST_GeomFromGeoJSON('%v')::geography", geom.String()))
+						default:
+							qualifiers.WriteString(fmt.Sprintf(" DEFAULT %v", val))
+						}
+					}
+				case driver.Valuer:
+					val, err := v.Value()
+					if err == nil {
+						qualifiers.WriteString(fmt.Sprintf(" DEFAULT %v", val))
+					}
+				default:
+					qualifiers.WriteString(fmt.Sprintf(" DEFAULT %v", toString(v)))
+				}
+			}
+		}
+	}
+	return qualifiers.String()
+}
+
+func (c Compiler) parseFieldType(field *model.Field) string {
+	switch c.AdapterInfo.DatabaseType() {
+	case adapter.PostgreSQL:
+		if field.AutoIncrement {
+			return "serial"
+		}
+		switch field.DataType {
+		case model.Bool:
+			return "bool"
+		case model.Int:
+			return "int"
+		case model.Uint:
+			return "int" // unsigned not supported by postgresql
+		case model.String:
+			return "varchar(255)" // TODO: might not be long enough, allow spec
+		case model.Float:
+			return "float64"
+		case model.Time:
+			return "time"
+		case model.Bytes:
+			return "bytea"
+		case model.LocationType:
+			return "geography(point)"
+		case model.RegionType:
+			return "geography(polygon)"
+		case model.TimestampType:
+			return "timestamp"
+		default:
+			return string(field.DataType)
+		}
+	default:
+		return ""
+	}
+}
+
 func replacePlaceholder(sqlString string, style adapter.PlaceholderStyle) string {
 	switch style {
 	case adapter.DollarPlaceholder:
@@ -181,4 +289,32 @@ func replacePlaceholder(sqlString string, style adapter.PlaceholderStyle) string
 		return sqlString
 	}
 	return sqlString
+}
+
+func toString(value interface{}) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case int:
+		return strconv.FormatInt(int64(v), 10)
+	case int8:
+		return strconv.FormatInt(int64(v), 10)
+	case int16:
+		return strconv.FormatInt(int64(v), 10)
+	case int32:
+		return strconv.FormatInt(int64(v), 10)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case uint:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint64:
+		return strconv.FormatUint(v, 10)
+	}
+	return ""
 }

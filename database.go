@@ -7,6 +7,7 @@ import (
 
 	"github.com/JayPeeTeeDee/atlas/adapter"
 	"github.com/JayPeeTeeDee/atlas/model"
+	"github.com/JayPeeTeeDee/atlas/query"
 )
 
 type DatabaseType string
@@ -48,12 +49,29 @@ func (d *Database) Disconnect() error {
 	return d.adapter.Disconnect()
 }
 
+func (d *Database) CreateTable(schemaName string, ifNotExists bool) error {
+	schema, ok := d.schemas[schemaName]
+	if !ok {
+		return errors.New("No such schema registered: " + schemaName)
+	}
+	compiler := query.Compiler{
+		AdapterInfo: d.adapter,
+		Schema:      schema,
+	}
+	sql := compiler.CompileTableCreation(ifNotExists)
+	_, err := d.Execute(sql)
+	return err
+}
+
 func (d *Database) RegisterModel(target interface{}) error {
 	schema, err := model.Parse(target)
 	if err != nil {
 		return err
 	}
-
+	err = schema.SetDefaultValues(target)
+	if err != nil {
+		return err
+	}
 	d.schemas[schema.Name] = *schema
 	return nil
 }

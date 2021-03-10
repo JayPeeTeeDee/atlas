@@ -56,7 +56,22 @@ type Field struct {
 	AutoIncrement     bool
 	NotNull           bool
 	Unique            bool
+	HasDefaultValue   bool
+	DefaultValue      interface{}
 	Schema            Schema
+}
+
+func (schema Schema) SetDefaultValues(target interface{}) error {
+	vals, err := ParseSingleObject(target, schema)
+	if err != nil {
+		return err
+	}
+	for _, field := range schema.Fields {
+		if field.HasDefaultValue {
+			field.DefaultValue = vals[field.Name]
+		}
+	}
+	return nil
 }
 
 func (schema *Schema) ParseField(fieldStruct reflect.StructField) *Field {
@@ -92,6 +107,10 @@ func (schema *Schema) ParseField(fieldStruct reflect.StructField) *Field {
 
 	if val, ok := field.TagSettings["UNIQUE"]; ok && checkTruth(val) {
 		field.Unique = true
+	}
+
+	if val, ok := field.TagSettings["DEFAULT"]; ok && checkTruth(val) {
+		field.HasDefaultValue = true
 	}
 
 	switch reflect.Indirect(fieldValue).Kind() {
@@ -222,6 +241,17 @@ func ParseObject(target interface{}, schema Schema) ([]map[string]interface{}, e
 	}
 
 	return res, nil
+}
+
+func ParseSingleObject(target interface{}, schema Schema) (map[string]interface{}, error) {
+	targetItem := reflect.ValueOf(target)
+	if targetItem.Kind() == reflect.Slice {
+		return nil, errors.New("Only 1 struct expected")
+	} else if targetItem.Kind() == reflect.Struct {
+		return parseStruct(targetItem, schema), nil
+	} else {
+		return nil, errors.New("Unknown input")
+	}
 }
 
 func parseStruct(targetValue reflect.Value, schema Schema) map[string]interface{} {

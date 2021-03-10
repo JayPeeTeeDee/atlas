@@ -52,7 +52,7 @@ func TestRawQuery(t *testing.T) {
 
 type ModelTest struct {
 	A int
-	B int
+	B int `atlas:"default"`
 }
 
 func TestModelSingleQuery(t *testing.T) {
@@ -61,9 +61,11 @@ func TestModelSingleQuery(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&ModelTest{})
-
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
+	err = db.RegisterModel(ModelTest{})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("ModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -109,9 +111,11 @@ func TestModelSelectQuery(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&ModelTest{})
-
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
+	err = db.RegisterModel(ModelTest{})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("ModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -174,9 +178,11 @@ func TestModelAllQuery(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&ModelTest{})
-
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
+	err = db.RegisterModel(ModelTest{})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("ModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -222,9 +228,11 @@ func TestModelSingleInsert(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&ModelTest{})
-
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
+	err = db.RegisterModel(ModelTest{})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("ModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -271,9 +279,11 @@ func TestModelMultiInsert(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&ModelTest{})
-
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int);")
+	err = db.RegisterModel(ModelTest{})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("ModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -325,9 +335,11 @@ func TestModelSelectInsert(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&ModelTest{})
-
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int DEFAULT 1);")
+	err = db.RegisterModel(ModelTest{B: 1})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("ModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -379,9 +391,11 @@ func TestModelOmitInsert(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&ModelTest{})
-
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS model_test (a int, b int DEFAULT 1);")
+	err = db.RegisterModel(ModelTest{B: 1})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("ModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -439,8 +453,11 @@ func TestSpatialModelInsert(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&SpatialModelTest{})
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geography, c geography);")
+	err = db.RegisterModel(SpatialModelTest{})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("SpatialModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -503,8 +520,11 @@ func TestSpatialModelUpdateCustom(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&SpatialModelTest{})
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geography, c geography);")
+	err = db.RegisterModel(SpatialModelTest{})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("SpatialModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -582,8 +602,11 @@ func TestSpatialModelUpdatePrimary(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&SpatialModelTest{})
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS spatial_model_test (a int, b geography, c geography);")
+	err = db.RegisterModel(SpatialModelTest{})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("SpatialModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
@@ -654,8 +677,8 @@ func TestSpatialModelUpdatePrimary(t *testing.T) {
 }
 
 type SimpleSpatialModelTest struct {
-	A int `atlas:"primarykey"`
-	B model.Location
+	A int            `atlas:"primarykey;autoincrement"`
+	B model.Location `atlas:"default"`
 }
 
 func TestSimpleSpatialModelCoverQuery(t *testing.T) {
@@ -664,28 +687,33 @@ func TestSimpleSpatialModelCoverQuery(t *testing.T) {
 		t.Errorf("Failed to connect to db")
 	}
 
-	db.RegisterModel(&SimpleSpatialModelTest{})
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS simple_spatial_model_test (a int PRIMARY KEY, b geography);")
+	err = db.RegisterModel(SimpleSpatialModelTest{B: model.NewLocation(40.0, 40.0)})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("SimpleSpatialModelTest", true)
 	if err != nil {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
 
 	vals := []SimpleSpatialModelTest{
 		{
-			A: 1,
 			B: model.NewLocation(-60.0, 0.0),
 		},
 		{
-			A: 2,
 			B: model.NewLocation(30.0, 10.0),
 		},
 		{
-			A: 3,
 			B: model.NewLocation(50.0, 20.0),
 		},
 	}
 
-	_, err = db.Create(vals)
+	_, err = db.Model("SimpleSpatialModelTest").Omit("A").Create(vals)
+	if err != nil {
+		t.Errorf("Failed to insert rows: %s\n", err.Error())
+	}
+
+	_, err = db.Model("SimpleSpatialModelTest").Omit("B").Create(SimpleSpatialModelTest{A: 100})
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -696,7 +724,7 @@ func TestSimpleSpatialModelCoverQuery(t *testing.T) {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
 
-	if len(res) != 2 {
+	if len(res) != 3 {
 		t.Errorf("Query is wrong")
 	}
 
