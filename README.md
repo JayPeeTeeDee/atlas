@@ -32,15 +32,21 @@ func main() {
 	}
 	defer db.Disconnect()
 
-	// Upcoming feature: Table creation
-	_, err = db.Execute("CREATE TABLE IF NOT EXISTS car(id int PRIMARY KEY, location geography, brand varchar(100), model varchar(100));")
+	// Register models for ORM to recognise
+	db.RegisterModel(Car{})
+	if err != nil {
+		fmt.Fprint(os.Stderr, "Failed to register model")
+		os.Exit(1)
+	}
+
+	// Create table on database for model
+	err = db.CreateTable("Car", true)
+	// CREATE TABLE IF NOT EXISTS car(id int PRIMARY KEY, location geography(point), brand varchar(255), model varchar(255));"
+
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-
-	// Register models for ORM to recognise
-	db.RegisterModel(&Car{})
 
 	// Create entries in database
 	cars := []Car{

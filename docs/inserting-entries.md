@@ -18,7 +18,7 @@ res, err := db.Model("Car").Create(otherCar)
 ## Specifying All Fields
 If all fields of the model are specified, the object can be inserted simply with the following API directly:
 ```go 
-func db.Create(<object or slice of objects>) (sql.Result, error)
+func (d *Database) Create(<object or slice of objects>) (sql.Result, error)
 ```
 ## Omitting Some Fields
 To insert without specify some fields (e.g. auto-incremented fields or fields with default value), 
