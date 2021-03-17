@@ -6,11 +6,6 @@ type Aggregation interface {
 	GetAggregation() string
 }
 
-type Order struct {
-	Column     string
-	Descending bool
-}
-
 type Type string
 
 const (
@@ -47,13 +42,7 @@ func (b *Builder) Where(clause Clause) *Builder {
 	return b
 }
 
-func (b *Builder) OrderBy(column string, desc bool) *Builder {
-	// TODO: check that table has column
-	order := Order{
-		Column:     column,
-		Descending: desc,
-	}
-
+func (b *Builder) OrderBy(order Order) *Builder {
 	b.Orders = append(b.Orders, order)
 	return b
 }

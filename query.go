@@ -88,12 +88,39 @@ func (q *Query) Offset(count uint64) *Query {
 	return q
 }
 
-func (q *Query) OrderBy(column string, desc bool) *Query {
-	missingCols := q.getMissingCols(column)
-	if len(missingCols) > 0 {
-		q.buildErrors = append(q.buildErrors, fmt.Errorf("Mising cols: %s", strings.Join(missingCols, ",")))
+func (q *Query) OrderBy(orders ...query.Order) *Query {
+	for _, order := range orders {
+		if order.IsValid(q.schema.FieldsByName) {
+			q.builder.OrderBy(order)
+		} else {
+			q.buildErrors = append(q.buildErrors, fmt.Errorf("Invalid order clause"))
+		}
 	}
-	q.builder.OrderBy(column, desc)
+	return q
+}
+
+func (q *Query) OrderByCol(column string, desc bool) *Query {
+	order := query.ColumnOrder{Column: column, Descending: desc}
+	return q.OrderBy(order)
+}
+
+func (q *Query) OrderByColDistance(column string, target model.SpatialObject, desc bool) *Query {
+	order := query.SpatialOrder{Column: column, Target: target, Descending: desc}
+	return q.OrderBy(order)
+}
+
+func (q *Query) OrderByNearestTo(target model.SpatialObject, desc bool) *Query {
+	if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() > 1 {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial ordering"))
+	} else if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() == 0 {
+		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial ordering"))
+	}
+
+	if q.schema.LocationFieldNames.Size() == 1 {
+		q.OrderBy(query.SpatialOrder{Column: q.schema.LocationFieldNames.Keys()[0], Target: target, Descending: desc})
+	} else {
+		q.OrderBy(query.SpatialOrder{Column: q.schema.RegionFieldNames.Keys()[0], Target: target, Descending: desc})
+	}
 	return q
 }
 

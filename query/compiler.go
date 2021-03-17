@@ -106,6 +106,17 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 			sql.WriteString(clauseSql)
 			values = append(values, clauseValues...)
 		}
+		if len(builder.Orders) > 0 {
+			sql.WriteString(" ORDER BY ")
+			for i, order := range builder.Orders {
+				clauseSql, clauseValues := order.Sql(c.Schema.FieldsByName, c.AdapterInfo.SpatialType())
+				sql.WriteString(clauseSql)
+				values = append(values, clauseValues...)
+				if i < len(builder.Orders)-1 {
+					sql.WriteString(",")
+				}
+			}
+		}
 		if builder.Limit > 0 {
 			sql.WriteString(" LIMIT ")
 			sql.WriteString(fmt.Sprintf("%d", builder.Limit))

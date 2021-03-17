@@ -734,3 +734,124 @@ func TestSimpleSpatialModelCoverQuery(t *testing.T) {
 	}
 	db.Disconnect()
 }
+
+type OrderModelTest struct {
+	A int
+	B int
+	C int
+}
+
+func TestModelOrderQuery(t *testing.T) {
+	db, err := ConnectWithDSN(DBType_Postgres, "postgresql://johnphua:johnphua@localhost/project")
+	if err != nil {
+		t.Errorf("Failed to connect to db")
+	}
+
+	err = db.RegisterModel(OrderModelTest{})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("OrderModelTest", true)
+	if err != nil {
+		t.Errorf("Failed to create table: %s\n", err.Error())
+	}
+
+	vals := []OrderModelTest{
+		{A: 1, B: 1, C: 1},
+		{A: 1, B: 2, C: 7},
+		{A: 1, B: 2, C: 2},
+		{A: 1, B: 2, C: 4},
+		{A: 1, B: 3, C: 3},
+		{A: 2, B: 1, C: 1},
+		{A: 2, B: 2, C: 2},
+		{A: 2, B: 2, C: 3},
+	}
+
+	_, err = db.Create(vals)
+	if err != nil {
+		t.Errorf("Failed to insert rows: %s\n", err.Error())
+	}
+
+	res := make([]OrderModelTest, 0)
+	err = db.Model("OrderModelTest").Where(query.Equal{Column: "A", Value: "1"}).Limit(3).OrderByCol("B", true).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 3 {
+		t.Errorf("Query is wrong")
+	} else if res[0].B != 3 || res[2].B != 2 {
+		t.Errorf("Query is wrong")
+	}
+
+	err = db.Model("OrderModelTest").Where(query.Equal{Column: "A", Value: "1"}).Limit(3).OrderByCol("B", true).OrderByCol("C", false).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 3 {
+		t.Errorf("Query is wrong")
+	} else if res[0].B != 3 || res[0].C != 3 || res[2].B != 2 || res[2].C != 4 {
+		t.Errorf("Query is wrong")
+	}
+
+	_, err = db.Execute("DROP TABLE order_model_test;")
+	if err != nil {
+		t.Errorf("Failed to drop table: %s\n", err.Error())
+	}
+	db.Disconnect()
+}
+
+func TestSimpleSpatialModelOrderQuery(t *testing.T) {
+	db, err := ConnectWithDSN(DBType_Postgres, "postgresql://johnphua:johnphua@localhost/project")
+	if err != nil {
+		t.Errorf("Failed to connect to db")
+	}
+
+	err = db.RegisterModel(SimpleSpatialModelTest{B: model.NewLocation(40.0, 40.0)})
+	if err != nil {
+		t.Errorf("Failed to register model: %s\n", err.Error())
+	}
+	err = db.CreateTable("SimpleSpatialModelTest", true)
+	if err != nil {
+		t.Errorf("Failed to create table: %s\n", err.Error())
+	}
+
+	vals := []SimpleSpatialModelTest{
+		{
+			B: model.NewLocation(-60.0, 0.0),
+		},
+		{
+			B: model.NewLocation(30.0, 10.0),
+		},
+		{
+			B: model.NewLocation(50.0, 20.0),
+		},
+		{
+			B: model.NewLocation(40.0, 40.0),
+		},
+	}
+
+	_, err = db.Model("SimpleSpatialModelTest").Omit("A").Create(vals)
+	if err != nil {
+		t.Errorf("Failed to insert rows: %s\n", err.Error())
+	}
+
+	res := make([]SpatialModelTest, 0)
+	err = db.Model("SimpleSpatialModelTest").OrderByNearestTo(model.NewRectRegion(-10.0, 10.0, -10.0, 10.0), false).Limit(2).All(&res)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if len(res) != 2 {
+		t.Errorf("Query is wrong")
+	} else if !res[0].B.IsEqual(vals[1].B) || !res[1].B.IsEqual(vals[2].B) {
+		t.Errorf("Query is wrong")
+	}
+
+	_, err = db.Execute("DROP TABLE simple_spatial_model_test;")
+	if err != nil {
+		t.Errorf("Failed to drop table: %s\n", err.Error())
+	}
+	db.Disconnect()
+}
