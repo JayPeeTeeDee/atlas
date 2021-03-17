@@ -55,7 +55,7 @@ func (q *Query) Error() error {
 func (q *Query) Select(columns ...string) *Query {
 	missingCols := q.getMissingCols(columns...)
 	if len(missingCols) > 0 {
-		q.buildErrors = append(q.buildErrors, fmt.Errorf("Mising cols: %s", strings.Join(missingCols, ",")))
+		q.buildErrors = append(q.buildErrors, fmt.Errorf("Missing cols: %s", strings.Join(missingCols, ",")))
 	}
 	q.builder.Selections.AddAll(columns...)
 	return q
@@ -64,13 +64,16 @@ func (q *Query) Select(columns ...string) *Query {
 func (q *Query) Omit(columns ...string) *Query {
 	missingCols := q.getMissingCols(columns...)
 	if len(missingCols) > 0 {
-		q.buildErrors = append(q.buildErrors, fmt.Errorf("Mising cols: %s", strings.Join(missingCols, ",")))
+		q.buildErrors = append(q.buildErrors, fmt.Errorf("Missing cols: %s", strings.Join(missingCols, ",")))
 	}
 	q.builder.Omissions.AddAll(columns...)
 	return q
 }
 
 func (q *Query) Where(clause query.Clause) *Query {
+	if !clause.IsValid(q.schema.FieldsByName) {
+		q.buildErrors = append(q.buildErrors, fmt.Errorf("Invalid clause of type: %s", clause.Condition()))
+	}
 	q.builder.Where(clause)
 	return q
 }

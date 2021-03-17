@@ -10,6 +10,7 @@ import (
 
 type Clause interface {
 	Condition() string
+	IsValid(fields map[string]*model.Field) bool
 	Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{})
 }
 
@@ -20,6 +21,15 @@ type GreaterThan struct {
 
 func (e GreaterThan) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
 	return fmt.Sprintf("%s > ?", fields[e.Column].DBName), []interface{}{e.Value}
+}
+
+func (e GreaterThan) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[e.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType != model.LocationType && col.DataType != model.RegionType
+	}
 }
 
 func (e GreaterThan) Condition() string {
@@ -33,6 +43,15 @@ type LessThan struct {
 
 func (e LessThan) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
 	return fmt.Sprintf("%s < ?", fields[e.Column].DBName), []interface{}{e.Value}
+}
+
+func (e LessThan) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[e.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType != model.LocationType && col.DataType != model.RegionType
+	}
 }
 
 func (e LessThan) Condition() string {
@@ -57,6 +76,22 @@ func (e Equal) Sql(fields map[string]*model.Field, spatialType adapter.SpatialEx
 	}
 }
 
+func (e Equal) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[e.Column]
+	if !ok {
+		return ok
+	} else {
+		switch e.Value.(type) {
+		case model.Location:
+			return col.DataType == model.LocationType
+		case model.Region:
+			return col.DataType == model.RegionType
+		default:
+			return ok
+		}
+	}
+}
+
 func (e Equal) Condition() string {
 	return "="
 }
@@ -68,6 +103,15 @@ type GreaterThanOrEqual struct {
 
 func (e GreaterThanOrEqual) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
 	return fmt.Sprintf("%s >= ?", fields[e.Column].DBName), []interface{}{e.Value}
+}
+
+func (e GreaterThanOrEqual) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[e.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType != model.LocationType && col.DataType != model.RegionType
+	}
 }
 
 func (e GreaterThanOrEqual) Condition() string {
@@ -83,13 +127,22 @@ func (e LessThanOrEqual) Sql(fields map[string]*model.Field, spatialType adapter
 	return fmt.Sprintf("%s <= ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
+func (e LessThanOrEqual) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[e.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType != model.LocationType && col.DataType != model.RegionType
+	}
+}
+
 func (e LessThanOrEqual) Condition() string {
 	return "<="
 }
 
 type NotEqual struct {
 	Column string
-	Value  string
+	Value  interface{}
 }
 
 func (e NotEqual) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
@@ -102,6 +155,22 @@ func (e NotEqual) Sql(fields map[string]*model.Field, spatialType adapter.Spatia
 		}
 	default:
 		return fmt.Sprintf("%s <> ?", fields[e.Column].DBName), []interface{}{e.Value}
+	}
+}
+
+func (e NotEqual) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[e.Column]
+	if !ok {
+		return ok
+	} else {
+		switch e.Value.(type) {
+		case model.Location:
+			return col.DataType == model.LocationType
+		case model.Region:
+			return col.DataType == model.RegionType
+		default:
+			return ok
+		}
 	}
 }
 
@@ -118,6 +187,15 @@ func (e Like) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExt
 	return fmt.Sprintf("%s LIKE ?", fields[e.Column].DBName), []interface{}{e.Value}
 }
 
+func (e Like) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[e.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType == model.String
+	}
+}
+
 func (e Like) Condition() string {
 	return "LIKE"
 }
@@ -129,6 +207,15 @@ type NotLike struct {
 
 func (e NotLike) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
 	return fmt.Sprintf("%s NOT LIKE ?", fields[e.Column].DBName), []interface{}{e.Value}
+}
+
+func (e NotLike) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[e.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType == model.String
+	}
 }
 
 func (e NotLike) Condition() string {
@@ -150,6 +237,15 @@ func (c CoveredBy) Sql(fields map[string]*model.Field, spatialType adapter.Spati
 	}
 }
 
+func (c CoveredBy) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[c.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType == model.LocationType || col.DataType == model.RegionType
+	}
+}
+
 func (c CoveredBy) Condition() string {
 	return "CoveredBy"
 }
@@ -165,6 +261,15 @@ func (c Covers) Sql(fields map[string]*model.Field, spatialType adapter.SpatialE
 	} else {
 		// Not implemented
 		return "", []interface{}{}
+	}
+}
+
+func (c Covers) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[c.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType == model.LocationType || col.DataType == model.RegionType
 	}
 }
 
@@ -196,6 +301,15 @@ func (w WithinRangeOf) Sql(fields map[string]*model.Field, spatialType adapter.S
 	}
 }
 
+func (w WithinRangeOf) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[w.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType == model.LocationType || col.DataType == model.RegionType
+	}
+}
+
 func (w WithinRangeOf) Condition() string {
 	return "WithinRangeOf"
 }
@@ -224,6 +338,15 @@ func (h HasWithinRange) Sql(fields map[string]*model.Field, spatialType adapter.
 	}
 }
 
+func (h HasWithinRange) IsValid(fields map[string]*model.Field) bool {
+	col, ok := fields[h.Column]
+	if !ok {
+		return ok
+	} else {
+		return col.DataType == model.LocationType || col.DataType == model.RegionType
+	}
+}
+
 func (h HasWithinRange) Condition() string {
 	return "HasWithinRange"
 }
@@ -246,6 +369,15 @@ func (e Or) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExten
 	return sql.String(), values
 }
 
+func (e Or) IsValid(fields map[string]*model.Field) bool {
+	for _, clause := range e {
+		if !clause.IsValid(fields) {
+			return false
+		}
+	}
+	return true
+}
+
 func (e Or) Condition() string {
 	return "OR"
 }
@@ -266,6 +398,15 @@ func (e And) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExte
 		values = append(values, clauseVals...)
 	}
 	return sql.String(), values
+}
+
+func (e And) IsValid(fields map[string]*model.Field) bool {
+	for _, clause := range e {
+		if !clause.IsValid(fields) {
+			return false
+		}
+	}
+	return true
 }
 
 func (e And) Condition() string {
