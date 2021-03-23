@@ -15,11 +15,15 @@ type Clause interface {
 }
 
 type GreaterThan struct {
-	Column string
-	Value  string
+	Column      string
+	OtherColumn string
+	Value       interface{}
 }
 
 func (e GreaterThan) Sql(info QueryInfo) (string, []interface{}) {
+	if e.OtherColumn != "" {
+		return fmt.Sprintf("%s > %s", info.GetField(e.Column).GetFullDBName(), info.GetField(e.OtherColumn).GetFullDBName()), []interface{}{}
+	}
 	return fmt.Sprintf("%s > ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
@@ -27,9 +31,17 @@ func (e GreaterThan) IsValid(info QueryInfo) bool {
 	field := info.GetField(e.Column)
 	if field == nil {
 		return false
-	} else {
-		return field.DataType != model.LocationType && field.DataType != model.RegionType
 	}
+	firstOk := field.DataType != model.LocationType && field.DataType != model.RegionType
+	secondOk := true
+	if e.OtherColumn != "" {
+		otherField := info.GetField(e.OtherColumn)
+		if otherField == nil {
+			return false
+		}
+		secondOk = otherField.DataType != model.LocationType && otherField.DataType != model.RegionType
+	}
+	return firstOk && secondOk
 }
 
 func (e GreaterThan) Condition() string {
@@ -37,11 +49,15 @@ func (e GreaterThan) Condition() string {
 }
 
 type LessThan struct {
-	Column string
-	Value  string
+	Column      string
+	OtherColumn string
+	Value       interface{}
 }
 
 func (e LessThan) Sql(info QueryInfo) (string, []interface{}) {
+	if e.OtherColumn != "" {
+		return fmt.Sprintf("%s < %s", info.GetField(e.Column).GetFullDBName(), info.GetField(e.OtherColumn).GetFullDBName()), []interface{}{}
+	}
 	return fmt.Sprintf("%s < ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
@@ -49,9 +65,17 @@ func (e LessThan) IsValid(info QueryInfo) bool {
 	field := info.GetField(e.Column)
 	if field == nil {
 		return false
-	} else {
-		return field.DataType != model.LocationType && field.DataType != model.RegionType
 	}
+	firstOk := field.DataType != model.LocationType && field.DataType != model.RegionType
+	secondOk := true
+	if e.OtherColumn != "" {
+		otherField := info.GetField(e.OtherColumn)
+		if otherField == nil {
+			return false
+		}
+		secondOk = otherField.DataType != model.LocationType && otherField.DataType != model.RegionType
+	}
+	return firstOk && secondOk
 }
 
 func (e LessThan) Condition() string {
@@ -59,8 +83,9 @@ func (e LessThan) Condition() string {
 }
 
 type Equal struct {
-	Column string
-	Value  interface{}
+	Column      string
+	OtherColumn string
+	Value       interface{}
 }
 
 func (e Equal) Sql(info QueryInfo) (string, []interface{}) {
@@ -69,11 +94,23 @@ func (e Equal) Sql(info QueryInfo) (string, []interface{}) {
 	switch field.DataType {
 	case model.LocationType, model.RegionType:
 		if spatialType == adapter.PostGisExtension {
+			if e.OtherColumn != "" {
+				otherField := info.GetField(e.OtherColumn)
+				return fmt.Sprintf("ST_Equals(%s::geometry, %s::geometry)", field.GetFullDBName(), otherField.GetFullDBName()), []interface{}{}
+			}
 			return fmt.Sprintf("ST_Equals(%s::geometry, ST_GeomFromGeoJSON(?))", field.GetFullDBName()), []interface{}{e.Value}
 		} else {
+			if e.OtherColumn != "" {
+				otherField := info.GetField(e.OtherColumn)
+				return fmt.Sprintf("%s = %s", field.GetFullDBName(), otherField.GetFullDBName()), []interface{}{}
+			}
 			return fmt.Sprintf("%s = ?", field.GetFullDBName()), []interface{}{e.Value}
 		}
 	default:
+		if e.OtherColumn != "" {
+			otherField := info.GetField(e.OtherColumn)
+			return fmt.Sprintf("%s = %s", field.GetFullDBName(), otherField.GetFullDBName()), []interface{}{}
+		}
 		return fmt.Sprintf("%s = ?", field.GetFullDBName()), []interface{}{e.Value}
 	}
 }
@@ -82,7 +119,14 @@ func (e Equal) IsValid(info QueryInfo) bool {
 	field := info.GetField(e.Column)
 	if field == nil {
 		return false
-	} else {
+	}
+	if e.OtherColumn != "" {
+		otherField := info.GetField(e.OtherColumn)
+		if otherField == nil {
+			return false
+		}
+	}
+	if e.Value != nil {
 		switch e.Value.(type) {
 		case model.Location:
 			return field.DataType == model.LocationType
@@ -92,10 +136,18 @@ func (e Equal) IsValid(info QueryInfo) bool {
 			return true
 		}
 	}
+
+	return true
 }
 
 func (e Equal) Condition() string {
 	return "="
+}
+
+type NotEqual struct {
+	Column      string
+	OtherColumn string
+	Value       interface{}
 }
 
 func (e NotEqual) Sql(info QueryInfo) (string, []interface{}) {
@@ -104,11 +156,23 @@ func (e NotEqual) Sql(info QueryInfo) (string, []interface{}) {
 	switch field.DataType {
 	case model.LocationType, model.RegionType:
 		if spatialType == adapter.PostGisExtension {
+			if e.OtherColumn != "" {
+				otherField := info.GetField(e.OtherColumn)
+				return fmt.Sprintf("NOT ST_Equals(%s::geometry, %s::geometry)", field.GetFullDBName(), otherField.GetFullDBName()), []interface{}{}
+			}
 			return fmt.Sprintf("NOT ST_Equals(%s::geometry, ST_GeomFromGeoJSON(?))", field.GetFullDBName()), []interface{}{e.Value}
 		} else {
+			if e.OtherColumn != "" {
+				otherField := info.GetField(e.OtherColumn)
+				return fmt.Sprintf("%s <> %s", field.GetFullDBName(), otherField.GetFullDBName()), []interface{}{}
+			}
 			return fmt.Sprintf("%s <> ?", field.GetFullDBName()), []interface{}{e.Value}
 		}
 	default:
+		if e.OtherColumn != "" {
+			otherField := info.GetField(e.OtherColumn)
+			return fmt.Sprintf("%s <> %s", field.GetFullDBName(), otherField.GetFullDBName()), []interface{}{}
+		}
 		return fmt.Sprintf("%s <> ?", field.GetFullDBName()), []interface{}{e.Value}
 	}
 }
@@ -117,7 +181,14 @@ func (e NotEqual) IsValid(info QueryInfo) bool {
 	field := info.GetField(e.Column)
 	if field == nil {
 		return false
-	} else {
+	}
+	if e.OtherColumn != "" {
+		otherField := info.GetField(e.OtherColumn)
+		if otherField == nil {
+			return false
+		}
+	}
+	if e.Value != nil {
 		switch e.Value.(type) {
 		case model.Location:
 			return field.DataType == model.LocationType
@@ -127,6 +198,8 @@ func (e NotEqual) IsValid(info QueryInfo) bool {
 			return true
 		}
 	}
+
+	return true
 }
 
 func (e NotEqual) Condition() string {
@@ -134,11 +207,15 @@ func (e NotEqual) Condition() string {
 }
 
 type GreaterThanOrEqual struct {
-	Column string
-	Value  string
+	Column      string
+	OtherColumn string
+	Value       interface{}
 }
 
 func (e GreaterThanOrEqual) Sql(info QueryInfo) (string, []interface{}) {
+	if e.OtherColumn != "" {
+		return fmt.Sprintf("%s >= %s", info.GetField(e.Column).GetFullDBName(), info.GetField(e.OtherColumn).GetFullDBName()), []interface{}{}
+	}
 	return fmt.Sprintf("%s >= ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
@@ -146,9 +223,17 @@ func (e GreaterThanOrEqual) IsValid(info QueryInfo) bool {
 	field := info.GetField(e.Column)
 	if field == nil {
 		return false
-	} else {
-		return field.DataType != model.LocationType && field.DataType != model.RegionType
 	}
+	firstOk := field.DataType != model.LocationType && field.DataType != model.RegionType
+	secondOk := true
+	if e.OtherColumn != "" {
+		otherField := info.GetField(e.OtherColumn)
+		if otherField == nil {
+			return false
+		}
+		secondOk = otherField.DataType != model.LocationType && otherField.DataType != model.RegionType
+	}
+	return firstOk && secondOk
 }
 
 func (e GreaterThanOrEqual) Condition() string {
@@ -156,11 +241,15 @@ func (e GreaterThanOrEqual) Condition() string {
 }
 
 type LessThanOrEqual struct {
-	Column string
-	Value  string
+	Column      string
+	OtherColumn string
+	Value       interface{}
 }
 
 func (e LessThanOrEqual) Sql(info QueryInfo) (string, []interface{}) {
+	if e.OtherColumn != "" {
+		return fmt.Sprintf("%s <= %s", info.GetField(e.Column).GetFullDBName(), info.GetField(e.OtherColumn).GetFullDBName()), []interface{}{}
+	}
 	return fmt.Sprintf("%s <= ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
@@ -168,18 +257,21 @@ func (e LessThanOrEqual) IsValid(info QueryInfo) bool {
 	field := info.GetField(e.Column)
 	if field == nil {
 		return false
-	} else {
-		return field.DataType != model.LocationType && field.DataType != model.RegionType
 	}
+	firstOk := field.DataType != model.LocationType && field.DataType != model.RegionType
+	secondOk := true
+	if e.OtherColumn != "" {
+		otherField := info.GetField(e.OtherColumn)
+		if otherField == nil {
+			return false
+		}
+		secondOk = otherField.DataType != model.LocationType && otherField.DataType != model.RegionType
+	}
+	return firstOk && secondOk
 }
 
 func (e LessThanOrEqual) Condition() string {
 	return "<="
-}
-
-type NotEqual struct {
-	Column string
-	Value  interface{}
 }
 
 type Like struct {
@@ -228,13 +320,17 @@ func (e NotLike) Condition() string {
 
 // Geography specific clauses
 type CoveredBy struct {
-	Column string
-	Target model.SpatialObject
+	Column       string
+	TargetColumn string
+	Target       model.SpatialObject
 }
 
 func (c CoveredBy) Sql(info QueryInfo) (string, []interface{}) {
 	spatialType := info.GetAdapterInfo().SpatialType()
 	if spatialType == adapter.PostGisExtension {
+		if c.TargetColumn != "" {
+			return fmt.Sprintf("ST_Covers(%s, %s)", info.GetField(c.TargetColumn).GetFullDBName(), info.GetField(c.Column).GetFullDBName()), []interface{}{}
+		}
 		return fmt.Sprintf("ST_Covers(ST_GeomFromGeoJSON(?)::geography, %s)", info.GetField(c.Column).GetFullDBName()), []interface{}{c.Target}
 	} else {
 		// Not implemented
@@ -246,9 +342,17 @@ func (c CoveredBy) IsValid(info QueryInfo) bool {
 	field := info.GetField(c.Column)
 	if field == nil {
 		return false
-	} else {
-		return field.DataType == model.LocationType || field.DataType == model.RegionType
 	}
+	firstOk := field.DataType == model.LocationType || field.DataType == model.RegionType
+	secondOk := true
+	if c.TargetColumn != "" {
+		otherField := info.GetField(c.TargetColumn)
+		if otherField == nil {
+			return false
+		}
+		secondOk = otherField.DataType == model.LocationType || otherField.DataType == model.RegionType
+	}
+	return firstOk && secondOk
 }
 
 func (c CoveredBy) Condition() string {
@@ -256,13 +360,17 @@ func (c CoveredBy) Condition() string {
 }
 
 type Covers struct {
-	Column string
-	Target model.SpatialObject
+	Column       string
+	TargetColumn string
+	Target       model.SpatialObject
 }
 
 func (c Covers) Sql(info QueryInfo) (string, []interface{}) {
 	spatialType := info.GetAdapterInfo().SpatialType()
 	if spatialType == adapter.PostGisExtension {
+		if c.TargetColumn != "" {
+			return fmt.Sprintf("ST_Covers(%s, %s)", info.GetField(c.Column).GetFullDBName(), info.GetField(c.TargetColumn).GetFullDBName()), []interface{}{}
+		}
 		return fmt.Sprintf("ST_Covers(%s, ST_GeomFromGeoJSON(?)::geography)", info.GetField(c.Column).GetFullDBName()), []interface{}{c.Target}
 	} else {
 		// Not implemented
@@ -274,9 +382,17 @@ func (c Covers) IsValid(info QueryInfo) bool {
 	field := info.GetField(c.Column)
 	if field == nil {
 		return false
-	} else {
-		return field.DataType == model.LocationType || field.DataType == model.RegionType
 	}
+	firstOk := field.DataType == model.LocationType || field.DataType == model.RegionType
+	secondOk := true
+	if c.TargetColumn != "" {
+		otherField := info.GetField(c.TargetColumn)
+		if otherField == nil {
+			return false
+		}
+		secondOk = otherField.DataType == model.LocationType || otherField.DataType == model.RegionType
+	}
+	return firstOk && secondOk
 }
 
 func (c Covers) Condition() string {
@@ -284,9 +400,10 @@ func (c Covers) Condition() string {
 }
 
 type WithinRangeOf struct {
-	Column  string
-	Targets []model.SpatialObject
-	Range   float64
+	Column       string
+	TargetColumn string
+	Targets      []model.SpatialObject
+	Range        float64
 }
 
 func (w WithinRangeOf) Sql(info QueryInfo) (string, []interface{}) {
@@ -294,12 +411,18 @@ func (w WithinRangeOf) Sql(info QueryInfo) (string, []interface{}) {
 	if spatialType == adapter.PostGisExtension {
 		sql := strings.Builder{}
 		vals := []interface{}{}
-		for i, targetObj := range w.Targets {
-			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", info.GetField(w.Column).GetFullDBName()))
-			vals = append(vals, targetObj, w.Range)
-			if i < len(w.Targets)-1 {
+
+		if w.TargetColumn != "" {
+			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, %s, ?)", info.GetField(w.Column).GetFullDBName(), info.GetField(w.TargetColumn).GetFullDBName()))
+			vals = append(vals, w.Range)
+		}
+
+		for _, targetObj := range w.Targets {
+			if sql.Len() > 0 {
 				sql.WriteString(" OR ")
 			}
+			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", info.GetField(w.Column).GetFullDBName()))
+			vals = append(vals, targetObj, w.Range)
 		}
 		return sql.String(), vals
 	} else {
@@ -312,9 +435,17 @@ func (w WithinRangeOf) IsValid(info QueryInfo) bool {
 	field := info.GetField(w.Column)
 	if field == nil {
 		return false
-	} else {
-		return field.DataType == model.LocationType || field.DataType == model.RegionType
 	}
+	firstOk := field.DataType == model.LocationType || field.DataType == model.RegionType
+	secondOk := true
+	if w.TargetColumn != "" {
+		otherField := info.GetField(w.TargetColumn)
+		if otherField == nil {
+			return false
+		}
+		secondOk = otherField.DataType == model.LocationType || otherField.DataType == model.RegionType
+	}
+	return firstOk && secondOk
 }
 
 func (w WithinRangeOf) Condition() string {
@@ -322,9 +453,10 @@ func (w WithinRangeOf) Condition() string {
 }
 
 type HasWithinRange struct {
-	Column  string
-	Targets []model.SpatialObject
-	Range   float64
+	Column       string
+	TargetColumn string
+	Targets      []model.SpatialObject
+	Range        float64
 }
 
 func (h HasWithinRange) Sql(info QueryInfo) (string, []interface{}) {
@@ -332,12 +464,18 @@ func (h HasWithinRange) Sql(info QueryInfo) (string, []interface{}) {
 	if spatialType == adapter.PostGisExtension {
 		sql := strings.Builder{}
 		vals := []interface{}{}
-		for i, targetObj := range h.Targets {
-			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", info.GetField(h.Column).GetFullDBName()))
-			vals = append(vals, targetObj, h.Range)
-			if i < len(h.Targets)-1 {
+
+		if h.TargetColumn != "" {
+			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, %s, ?)", info.GetField(h.Column).GetFullDBName(), info.GetField(h.TargetColumn).GetFullDBName()))
+			vals = append(vals, h.Range)
+		}
+
+		for _, targetObj := range h.Targets {
+			if sql.Len() > 0 {
 				sql.WriteString(" AND ")
 			}
+			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", info.GetField(h.Column).GetFullDBName()))
+			vals = append(vals, targetObj, h.Range)
 		}
 		return sql.String(), vals
 	} else {
@@ -350,9 +488,17 @@ func (h HasWithinRange) IsValid(info QueryInfo) bool {
 	field := info.GetField(h.Column)
 	if field == nil {
 		return false
-	} else {
-		return field.DataType == model.LocationType || field.DataType == model.RegionType
 	}
+	firstOk := field.DataType == model.LocationType || field.DataType == model.RegionType
+	secondOk := true
+	if h.TargetColumn != "" {
+		otherField := info.GetField(h.TargetColumn)
+		if otherField == nil {
+			return false
+		}
+		secondOk = otherField.DataType == model.LocationType || otherField.DataType == model.RegionType
+	}
+	return firstOk && secondOk
 }
 
 func (h HasWithinRange) Condition() string {
