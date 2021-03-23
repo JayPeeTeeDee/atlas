@@ -9,8 +9,8 @@ import (
 
 type Order interface {
 	IsDescending() bool
-	IsValid(fields map[string]*model.Field) bool
-	Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{})
+	IsValid(info QueryInfo) bool
+	Sql(info QueryInfo) (string, []interface{})
 }
 
 type ColumnOrder struct {
@@ -18,8 +18,8 @@ type ColumnOrder struct {
 	Descending bool
 }
 
-func (c ColumnOrder) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	sql := fmt.Sprintf("%s ", fields[c.Column].DBName)
+func (c ColumnOrder) Sql(info QueryInfo) (string, []interface{}) {
+	sql := fmt.Sprintf("%s ", info.GetField(c.Column).DBName)
 	if c.Descending {
 		sql += "DESC"
 	} else {
@@ -28,12 +28,12 @@ func (c ColumnOrder) Sql(fields map[string]*model.Field, spatialType adapter.Spa
 	return sql, []interface{}{}
 }
 
-func (c ColumnOrder) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[c.Column]
-	if !ok {
-		return ok
+func (c ColumnOrder) IsValid(info QueryInfo) bool {
+	field := info.GetField(c.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType != model.LocationType && col.DataType != model.RegionType
+		return field.DataType != model.LocationType && field.DataType != model.RegionType
 	}
 }
 
@@ -47,13 +47,14 @@ type SpatialOrder struct {
 	Target     model.SpatialObject
 }
 
-func (s SpatialOrder) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+func (s SpatialOrder) Sql(info QueryInfo) (string, []interface{}) {
+	spatialType := info.GetAdapterInfo().SpatialType()
 	sql := ""
 	switch spatialType {
 	case adapter.PostGisExtension:
-		sql += fmt.Sprintf("%s::geometry <#> ST_GeomFromGeoJSON(?) ", fields[s.Column].DBName)
+		sql += fmt.Sprintf("%s::geometry <#> ST_GeomFromGeoJSON(?) ", info.GetField(s.Column).DBName)
 	default:
-		sql += fmt.Sprintf("%s::geometry <#> ST_GeomFromGeoJSON(?) ", fields[s.Column].DBName)
+		sql += fmt.Sprintf("%s::geometry <#> ST_GeomFromGeoJSON(?) ", info.GetField(s.Column).DBName)
 	}
 	if s.Descending {
 		sql += "DESC"
@@ -63,9 +64,9 @@ func (s SpatialOrder) Sql(fields map[string]*model.Field, spatialType adapter.Sp
 	return sql, []interface{}{s.Target}
 }
 
-func (s SpatialOrder) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[s.Column]
-	if !ok || (col.DataType != model.LocationType && col.DataType != model.RegionType) {
+func (s SpatialOrder) IsValid(info QueryInfo) bool {
+	field := info.GetField(s.Column)
+	if field == nil || (field.DataType != model.LocationType && field.DataType != model.RegionType) {
 		return false
 	} else {
 		switch s.Target.(type) {

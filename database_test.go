@@ -87,7 +87,7 @@ func TestModelSingleQuery(t *testing.T) {
 
 	res = ModelTest{}
 	err = db.Model("ModelTest").Where(query.And{
-		query.Equal{Column: "A", Value: "1"},
+		query.Equal{Column: "ModelTest.A", Value: "1"},
 		query.Equal{Column: "B", Value: "1"},
 	}).First(&res)
 	if err != nil {
@@ -136,7 +136,7 @@ func TestModelSelectQuery(t *testing.T) {
 	}
 
 	other := make([]ModelTest, 0)
-	err = db.Model("ModelTest").Select("A").Where(query.Equal{Column: "A", Value: "1"}).All(&other)
+	err = db.Model("ModelTest").Select("ModelTest.A").Where(query.Equal{Column: "A", Value: "1"}).All(&other)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -497,7 +497,7 @@ func TestSpatialModelInsert(t *testing.T) {
 	}
 
 	res := make([]SpatialModelTest, 0)
-	err = db.Model("SpatialModelTest").Where(query.Equal{Column: "B", Value: model.NewLocation(-60.0, 0.0)}).All(&res)
+	err = db.Model("SpatialModelTest").Where(query.Equal{Column: "SpatialModelTest.B", Value: model.NewLocation(-60.0, 0.0)}).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
@@ -713,7 +713,7 @@ func TestSimpleSpatialModelCoverQuery(t *testing.T) {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
 
-	_, err = db.Model("SimpleSpatialModelTest").Omit("B").Create(SimpleSpatialModelTest{A: 100})
+	_, err = db.Model("SimpleSpatialModelTest").Omit("SimpleSpatialModelTest.B").Create(SimpleSpatialModelTest{A: 100})
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -784,7 +784,7 @@ func TestModelOrderQuery(t *testing.T) {
 		t.Errorf("Query is wrong")
 	}
 
-	err = db.Model("OrderModelTest").Where(query.Equal{Column: "A", Value: "1"}).Limit(3).OrderByCol("B", true).OrderByCol("C", false).All(&res)
+	err = db.Model("OrderModelTest").Where(query.Equal{Column: "A", Value: "1"}).Limit(3).OrderByCol("OrderModelTest.B", true).OrderByCol("C", false).All(&res)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}

@@ -58,7 +58,15 @@ type Field struct {
 	Unique            bool
 	HasDefaultValue   bool
 	DefaultValue      interface{}
-	Schema            Schema
+	Schema            *Schema
+}
+
+func (field Field) GetFullDBName() string {
+	return field.Schema.Table + "." + field.DBName
+}
+
+func (field Field) GetFullName() string {
+	return field.Schema.Name + "." + field.Name
 }
 
 func (schema Schema) SetDefaultValues(target interface{}) error {
@@ -82,6 +90,7 @@ func (schema *Schema) ParseField(fieldStruct reflect.StructField) *Field {
 		StructField:       fieldStruct,
 		Tag:               fieldStruct.Tag,
 		TagSettings:       parseTagSetting(fieldStruct.Tag.Get("atlas"), ";"),
+		Schema:            schema,
 	}
 	for field.IndirectFieldType.Kind() == reflect.Ptr {
 		field.IndirectFieldType = field.IndirectFieldType.Elem()
@@ -198,14 +207,14 @@ func Parse(target interface{}) (*Schema, error) {
 				schema.FieldsByName[field.Name] = field
 				if field.PrimaryKey {
 					schema.PrimaryFields = append(schema.PrimaryFields, field)
-					schema.PrimaryFieldNames.Add(field.Name)
+					schema.PrimaryFieldNames.Add(field.GetFullName())
 				}
 				if field.DataType == LocationType {
-					schema.LocationFieldNames.Add(field.Name)
+					schema.LocationFieldNames.Add(field.GetFullName())
 				} else if field.DataType == RegionType {
-					schema.RegionFieldNames.Add(field.Name)
+					schema.RegionFieldNames.Add(field.GetFullName())
 				}
-				schema.AllFieldNames.Add(field.Name)
+				schema.AllFieldNames.Add(field.GetFullName())
 			}
 		}
 

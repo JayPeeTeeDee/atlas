@@ -54,11 +54,7 @@ func (d *Database) CreateTable(schemaName string, ifNotExists bool) error {
 	if !ok {
 		return errors.New("No such schema registered: " + schemaName)
 	}
-	compiler := query.Compiler{
-		AdapterInfo: d.adapter,
-		Schema:      schema,
-	}
-	sql := compiler.CompileTableCreation(ifNotExists)
+	sql := query.CompileTableCreation(NewQuery(schema, d), ifNotExists)
 	_, err := d.Execute(sql)
 	return err
 }

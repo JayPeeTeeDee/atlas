@@ -39,6 +39,17 @@ func (s *Set) Keys() []string {
 	return keys
 }
 
+func (s *Set) Union(other *Set) *Set {
+	newSet := NewSet()
+	for k := range s.vals {
+		newSet.Add(k)
+	}
+	for k := range other.vals {
+		newSet.Add(k)
+	}
+	return newSet
+}
+
 func (s *Set) Difference(other *Set) *Set {
 	newSet := NewSet()
 	for k := range s.vals {

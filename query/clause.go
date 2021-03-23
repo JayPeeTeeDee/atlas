@@ -10,8 +10,8 @@ import (
 
 type Clause interface {
 	Condition() string
-	IsValid(fields map[string]*model.Field) bool
-	Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{})
+	IsValid(info QueryInfo) bool
+	Sql(info QueryInfo) (string, []interface{})
 }
 
 type GreaterThan struct {
@@ -19,16 +19,16 @@ type GreaterThan struct {
 	Value  string
 }
 
-func (e GreaterThan) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	return fmt.Sprintf("%s > ?", fields[e.Column].DBName), []interface{}{e.Value}
+func (e GreaterThan) Sql(info QueryInfo) (string, []interface{}) {
+	return fmt.Sprintf("%s > ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
-func (e GreaterThan) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[e.Column]
-	if !ok {
-		return ok
+func (e GreaterThan) IsValid(info QueryInfo) bool {
+	field := info.GetField(e.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType != model.LocationType && col.DataType != model.RegionType
+		return field.DataType != model.LocationType && field.DataType != model.RegionType
 	}
 }
 
@@ -41,16 +41,16 @@ type LessThan struct {
 	Value  string
 }
 
-func (e LessThan) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	return fmt.Sprintf("%s < ?", fields[e.Column].DBName), []interface{}{e.Value}
+func (e LessThan) Sql(info QueryInfo) (string, []interface{}) {
+	return fmt.Sprintf("%s < ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
-func (e LessThan) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[e.Column]
-	if !ok {
-		return ok
+func (e LessThan) IsValid(info QueryInfo) bool {
+	field := info.GetField(e.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType != model.LocationType && col.DataType != model.RegionType
+		return field.DataType != model.LocationType && field.DataType != model.RegionType
 	}
 }
 
@@ -63,31 +63,33 @@ type Equal struct {
 	Value  interface{}
 }
 
-func (e Equal) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	switch fields[e.Column].DataType {
+func (e Equal) Sql(info QueryInfo) (string, []interface{}) {
+	spatialType := info.GetAdapterInfo().SpatialType()
+	field := info.GetField(e.Column)
+	switch field.DataType {
 	case model.LocationType, model.RegionType:
 		if spatialType == adapter.PostGisExtension {
-			return fmt.Sprintf("ST_Equals(%s::geometry, ST_GeomFromGeoJSON(?))", fields[e.Column].DBName), []interface{}{e.Value}
+			return fmt.Sprintf("ST_Equals(%s::geometry, ST_GeomFromGeoJSON(?))", field.GetFullDBName()), []interface{}{e.Value}
 		} else {
-			return fmt.Sprintf("%s = ?", fields[e.Column].DBName), []interface{}{e.Value}
+			return fmt.Sprintf("%s = ?", field.GetFullDBName()), []interface{}{e.Value}
 		}
 	default:
-		return fmt.Sprintf("%s = ?", fields[e.Column].DBName), []interface{}{e.Value}
+		return fmt.Sprintf("%s = ?", field.GetFullDBName()), []interface{}{e.Value}
 	}
 }
 
-func (e Equal) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[e.Column]
-	if !ok {
-		return ok
+func (e Equal) IsValid(info QueryInfo) bool {
+	field := info.GetField(e.Column)
+	if field == nil {
+		return false
 	} else {
 		switch e.Value.(type) {
 		case model.Location:
-			return col.DataType == model.LocationType
+			return field.DataType == model.LocationType
 		case model.Region:
-			return col.DataType == model.RegionType
+			return field.DataType == model.RegionType
 		default:
-			return ok
+			return true
 		}
 	}
 }
@@ -96,21 +98,56 @@ func (e Equal) Condition() string {
 	return "="
 }
 
+func (e NotEqual) Sql(info QueryInfo) (string, []interface{}) {
+	spatialType := info.GetAdapterInfo().SpatialType()
+	field := info.GetField(e.Column)
+	switch field.DataType {
+	case model.LocationType, model.RegionType:
+		if spatialType == adapter.PostGisExtension {
+			return fmt.Sprintf("NOT ST_Equals(%s::geometry, ST_GeomFromGeoJSON(?))", field.GetFullDBName()), []interface{}{e.Value}
+		} else {
+			return fmt.Sprintf("%s <> ?", field.GetFullDBName()), []interface{}{e.Value}
+		}
+	default:
+		return fmt.Sprintf("%s <> ?", field.GetFullDBName()), []interface{}{e.Value}
+	}
+}
+
+func (e NotEqual) IsValid(info QueryInfo) bool {
+	field := info.GetField(e.Column)
+	if field == nil {
+		return false
+	} else {
+		switch e.Value.(type) {
+		case model.Location:
+			return field.DataType == model.LocationType
+		case model.Region:
+			return field.DataType == model.RegionType
+		default:
+			return true
+		}
+	}
+}
+
+func (e NotEqual) Condition() string {
+	return "<>"
+}
+
 type GreaterThanOrEqual struct {
 	Column string
 	Value  string
 }
 
-func (e GreaterThanOrEqual) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	return fmt.Sprintf("%s >= ?", fields[e.Column].DBName), []interface{}{e.Value}
+func (e GreaterThanOrEqual) Sql(info QueryInfo) (string, []interface{}) {
+	return fmt.Sprintf("%s >= ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
-func (e GreaterThanOrEqual) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[e.Column]
-	if !ok {
-		return ok
+func (e GreaterThanOrEqual) IsValid(info QueryInfo) bool {
+	field := info.GetField(e.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType != model.LocationType && col.DataType != model.RegionType
+		return field.DataType != model.LocationType && field.DataType != model.RegionType
 	}
 }
 
@@ -123,16 +160,16 @@ type LessThanOrEqual struct {
 	Value  string
 }
 
-func (e LessThanOrEqual) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	return fmt.Sprintf("%s <= ?", fields[e.Column].DBName), []interface{}{e.Value}
+func (e LessThanOrEqual) Sql(info QueryInfo) (string, []interface{}) {
+	return fmt.Sprintf("%s <= ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
-func (e LessThanOrEqual) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[e.Column]
-	if !ok {
-		return ok
+func (e LessThanOrEqual) IsValid(info QueryInfo) bool {
+	field := info.GetField(e.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType != model.LocationType && col.DataType != model.RegionType
+		return field.DataType != model.LocationType && field.DataType != model.RegionType
 	}
 }
 
@@ -145,54 +182,21 @@ type NotEqual struct {
 	Value  interface{}
 }
 
-func (e NotEqual) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	switch fields[e.Column].DataType {
-	case model.LocationType, model.RegionType:
-		if spatialType == adapter.PostGisExtension {
-			return fmt.Sprintf("NOT ST_Equals(%s::geometry, ST_GeomFromGeoJSON(?))", fields[e.Column].DBName), []interface{}{e.Value}
-		} else {
-			return fmt.Sprintf("%s <> ?", fields[e.Column].DBName), []interface{}{e.Value}
-		}
-	default:
-		return fmt.Sprintf("%s <> ?", fields[e.Column].DBName), []interface{}{e.Value}
-	}
-}
-
-func (e NotEqual) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[e.Column]
-	if !ok {
-		return ok
-	} else {
-		switch e.Value.(type) {
-		case model.Location:
-			return col.DataType == model.LocationType
-		case model.Region:
-			return col.DataType == model.RegionType
-		default:
-			return ok
-		}
-	}
-}
-
-func (e NotEqual) Condition() string {
-	return "<>"
-}
-
 type Like struct {
 	Column string
 	Value  string
 }
 
-func (e Like) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	return fmt.Sprintf("%s LIKE ?", fields[e.Column].DBName), []interface{}{e.Value}
+func (e Like) Sql(info QueryInfo) (string, []interface{}) {
+	return fmt.Sprintf("%s LIKE ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
-func (e Like) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[e.Column]
-	if !ok {
-		return ok
+func (e Like) IsValid(info QueryInfo) bool {
+	field := info.GetField(e.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType == model.String
+		return field.DataType == model.String
 	}
 }
 
@@ -205,16 +209,16 @@ type NotLike struct {
 	Value  string
 }
 
-func (e NotLike) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
-	return fmt.Sprintf("%s NOT LIKE ?", fields[e.Column].DBName), []interface{}{e.Value}
+func (e NotLike) Sql(info QueryInfo) (string, []interface{}) {
+	return fmt.Sprintf("%s NOT LIKE ?", info.GetField(e.Column).GetFullDBName()), []interface{}{e.Value}
 }
 
-func (e NotLike) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[e.Column]
-	if !ok {
-		return ok
+func (e NotLike) IsValid(info QueryInfo) bool {
+	field := info.GetField(e.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType == model.String
+		return field.DataType == model.String
 	}
 }
 
@@ -228,21 +232,22 @@ type CoveredBy struct {
 	Target model.SpatialObject
 }
 
-func (c CoveredBy) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+func (c CoveredBy) Sql(info QueryInfo) (string, []interface{}) {
+	spatialType := info.GetAdapterInfo().SpatialType()
 	if spatialType == adapter.PostGisExtension {
-		return fmt.Sprintf("ST_Covers(ST_GeomFromGeoJSON(?)::geography, %s)", fields[c.Column].DBName), []interface{}{c.Target}
+		return fmt.Sprintf("ST_Covers(ST_GeomFromGeoJSON(?)::geography, %s)", info.GetField(c.Column).GetFullDBName()), []interface{}{c.Target}
 	} else {
 		// Not implemented
 		return "", []interface{}{}
 	}
 }
 
-func (c CoveredBy) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[c.Column]
-	if !ok {
-		return ok
+func (c CoveredBy) IsValid(info QueryInfo) bool {
+	field := info.GetField(c.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType == model.LocationType || col.DataType == model.RegionType
+		return field.DataType == model.LocationType || field.DataType == model.RegionType
 	}
 }
 
@@ -255,21 +260,22 @@ type Covers struct {
 	Target model.SpatialObject
 }
 
-func (c Covers) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+func (c Covers) Sql(info QueryInfo) (string, []interface{}) {
+	spatialType := info.GetAdapterInfo().SpatialType()
 	if spatialType == adapter.PostGisExtension {
-		return fmt.Sprintf("ST_Covers(%s, ST_GeomFromGeoJSON(?)::geography)", fields[c.Column].DBName), []interface{}{c.Target}
+		return fmt.Sprintf("ST_Covers(%s, ST_GeomFromGeoJSON(?)::geography)", info.GetField(c.Column).GetFullDBName()), []interface{}{c.Target}
 	} else {
 		// Not implemented
 		return "", []interface{}{}
 	}
 }
 
-func (c Covers) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[c.Column]
-	if !ok {
-		return ok
+func (c Covers) IsValid(info QueryInfo) bool {
+	field := info.GetField(c.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType == model.LocationType || col.DataType == model.RegionType
+		return field.DataType == model.LocationType || field.DataType == model.RegionType
 	}
 }
 
@@ -283,12 +289,13 @@ type WithinRangeOf struct {
 	Range   float64
 }
 
-func (w WithinRangeOf) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+func (w WithinRangeOf) Sql(info QueryInfo) (string, []interface{}) {
+	spatialType := info.GetAdapterInfo().SpatialType()
 	if spatialType == adapter.PostGisExtension {
 		sql := strings.Builder{}
 		vals := []interface{}{}
 		for i, targetObj := range w.Targets {
-			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", fields[w.Column].DBName))
+			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", info.GetField(w.Column).GetFullDBName()))
 			vals = append(vals, targetObj, w.Range)
 			if i < len(w.Targets)-1 {
 				sql.WriteString(" OR ")
@@ -301,12 +308,12 @@ func (w WithinRangeOf) Sql(fields map[string]*model.Field, spatialType adapter.S
 	}
 }
 
-func (w WithinRangeOf) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[w.Column]
-	if !ok {
-		return ok
+func (w WithinRangeOf) IsValid(info QueryInfo) bool {
+	field := info.GetField(w.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType == model.LocationType || col.DataType == model.RegionType
+		return field.DataType == model.LocationType || field.DataType == model.RegionType
 	}
 }
 
@@ -320,12 +327,13 @@ type HasWithinRange struct {
 	Range   float64
 }
 
-func (h HasWithinRange) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+func (h HasWithinRange) Sql(info QueryInfo) (string, []interface{}) {
+	spatialType := info.GetAdapterInfo().SpatialType()
 	if spatialType == adapter.PostGisExtension {
 		sql := strings.Builder{}
 		vals := []interface{}{}
 		for i, targetObj := range h.Targets {
-			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", fields[h.Column].DBName))
+			sql.WriteString(fmt.Sprintf("ST_DWithin(%s, ST_GeomFromGeoJSON(?)::geography, ?)", info.GetField(h.Column).GetFullDBName()))
 			vals = append(vals, targetObj, h.Range)
 			if i < len(h.Targets)-1 {
 				sql.WriteString(" AND ")
@@ -338,12 +346,12 @@ func (h HasWithinRange) Sql(fields map[string]*model.Field, spatialType adapter.
 	}
 }
 
-func (h HasWithinRange) IsValid(fields map[string]*model.Field) bool {
-	col, ok := fields[h.Column]
-	if !ok {
-		return ok
+func (h HasWithinRange) IsValid(info QueryInfo) bool {
+	field := info.GetField(h.Column)
+	if field == nil {
+		return false
 	} else {
-		return col.DataType == model.LocationType || col.DataType == model.RegionType
+		return field.DataType == model.LocationType || field.DataType == model.RegionType
 	}
 }
 
@@ -353,11 +361,11 @@ func (h HasWithinRange) Condition() string {
 
 type Or []Clause
 
-func (e Or) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+func (e Or) Sql(info QueryInfo) (string, []interface{}) {
 	sql := strings.Builder{}
 	values := make([]interface{}, 0)
 	for i, clause := range e {
-		clauseSql, clauseVals := clause.Sql(fields, spatialType)
+		clauseSql, clauseVals := clause.Sql(info)
 		if i == 0 {
 			sql.WriteString(clauseSql)
 		} else {
@@ -369,9 +377,9 @@ func (e Or) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExten
 	return sql.String(), values
 }
 
-func (e Or) IsValid(fields map[string]*model.Field) bool {
+func (e Or) IsValid(info QueryInfo) bool {
 	for _, clause := range e {
-		if !clause.IsValid(fields) {
+		if !clause.IsValid(info) {
 			return false
 		}
 	}
@@ -384,11 +392,11 @@ func (e Or) Condition() string {
 
 type And []Clause
 
-func (e And) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExtension) (string, []interface{}) {
+func (e And) Sql(info QueryInfo) (string, []interface{}) {
 	sql := strings.Builder{}
 	values := make([]interface{}, 0)
 	for i, clause := range e {
-		clauseSql, clauseVals := clause.Sql(fields, spatialType)
+		clauseSql, clauseVals := clause.Sql(info)
 		if i == 0 {
 			sql.WriteString(clauseSql)
 		} else {
@@ -400,9 +408,9 @@ func (e And) Sql(fields map[string]*model.Field, spatialType adapter.SpatialExte
 	return sql.String(), values
 }
 
-func (e And) IsValid(fields map[string]*model.Field) bool {
+func (e And) IsValid(info QueryInfo) bool {
 	for _, clause := range e {
-		if !clause.IsValid(fields) {
+		if !clause.IsValid(info) {
 			return false
 		}
 	}

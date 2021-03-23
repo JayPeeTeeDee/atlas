@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/JayPeeTeeDee/atlas/adapter"
 	"github.com/JayPeeTeeDee/atlas/model"
 	"github.com/JayPeeTeeDee/atlas/query"
 	"github.com/georgysavva/scany/dbscan"
@@ -13,11 +14,10 @@ import (
 
 type Query struct {
 	// TODO: Change to take in model
-	schema   model.Schema
-	builder  *query.Builder
-	database *Database
-	compiler *query.Compiler
-
+	mainSchema  model.Schema
+	joinSchemas map[string]model.Schema
+	builder     *query.Builder
+	database    *Database
 	buildErrors []error
 }
 
@@ -28,13 +28,10 @@ type Result struct {
 
 func NewQuery(schema model.Schema, database *Database) *Query {
 	return &Query{
-		schema:   schema,
-		builder:  query.NewBuilder(),
-		database: database,
-		compiler: &query.Compiler{
-			AdapterInfo: database.adapter,
-			Schema:      schema,
-		},
+		mainSchema:  schema,
+		joinSchemas: make(map[string]model.Schema),
+		builder:     query.NewBuilder(),
+		database:    database,
 		buildErrors: make([]error, 0),
 	}
 }
@@ -53,25 +50,25 @@ func (q *Query) Error() error {
 
 /* Functions for building up query */
 func (q *Query) Select(columns ...string) *Query {
-	missingCols := q.getMissingCols(columns...)
+	missingCols := q.getMissingCols(columns)
 	if len(missingCols) > 0 {
 		q.buildErrors = append(q.buildErrors, fmt.Errorf("Missing cols: %s", strings.Join(missingCols, ",")))
 	}
-	q.builder.Selections.AddAll(columns...)
+	q.builder.Selections.AddAll(q.parseCols(columns)...)
 	return q
 }
 
 func (q *Query) Omit(columns ...string) *Query {
-	missingCols := q.getMissingCols(columns...)
+	missingCols := q.getMissingCols(columns)
 	if len(missingCols) > 0 {
 		q.buildErrors = append(q.buildErrors, fmt.Errorf("Missing cols: %s", strings.Join(missingCols, ",")))
 	}
-	q.builder.Omissions.AddAll(columns...)
+	q.builder.Omissions.AddAll(q.parseCols(columns)...)
 	return q
 }
 
 func (q *Query) Where(clause query.Clause) *Query {
-	if !clause.IsValid(q.schema.FieldsByName) {
+	if !clause.IsValid(q) {
 		q.buildErrors = append(q.buildErrors, fmt.Errorf("Invalid clause of type: %s", clause.Condition()))
 	}
 	q.builder.Where(clause)
@@ -90,7 +87,7 @@ func (q *Query) Offset(count uint64) *Query {
 
 func (q *Query) OrderBy(orders ...query.Order) *Query {
 	for _, order := range orders {
-		if order.IsValid(q.schema.FieldsByName) {
+		if order.IsValid(q) {
 			q.builder.OrderBy(order)
 		} else {
 			q.buildErrors = append(q.buildErrors, fmt.Errorf("Invalid order clause"))
@@ -110,76 +107,76 @@ func (q *Query) OrderByColDistance(column string, target model.SpatialObject, de
 }
 
 func (q *Query) OrderByNearestTo(target model.SpatialObject, desc bool) *Query {
-	if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() > 1 {
+	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
 		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial ordering"))
-	} else if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() == 0 {
+	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
 		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial ordering"))
 	}
 
-	if q.schema.LocationFieldNames.Size() == 1 {
-		q.OrderBy(query.SpatialOrder{Column: q.schema.LocationFieldNames.Keys()[0], Target: target, Descending: desc})
+	if q.mainSchema.LocationFieldNames.Size() == 1 {
+		q.OrderBy(query.SpatialOrder{Column: q.mainSchema.LocationFieldNames.Keys()[0], Target: target, Descending: desc})
 	} else {
-		q.OrderBy(query.SpatialOrder{Column: q.schema.RegionFieldNames.Keys()[0], Target: target, Descending: desc})
+		q.OrderBy(query.SpatialOrder{Column: q.mainSchema.RegionFieldNames.Keys()[0], Target: target, Descending: desc})
 	}
 	return q
 }
 
 func (q *Query) CoveredBy(target model.SpatialObject) *Query {
-	if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() > 1 {
+	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
 		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
-	} else if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() == 0 {
+	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
 		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial query"))
 	}
 
-	if q.schema.LocationFieldNames.Size() == 1 {
-		q.builder.Where(query.CoveredBy{Column: q.schema.LocationFieldNames.Keys()[0], Target: target})
+	if q.mainSchema.LocationFieldNames.Size() == 1 {
+		q.builder.Where(query.CoveredBy{Column: q.mainSchema.LocationFieldNames.Keys()[0], Target: target})
 	} else {
-		q.builder.Where(query.CoveredBy{Column: q.schema.RegionFieldNames.Keys()[0], Target: target})
+		q.builder.Where(query.CoveredBy{Column: q.mainSchema.RegionFieldNames.Keys()[0], Target: target})
 	}
 	return q
 }
 
 func (q *Query) Covers(target model.SpatialObject) *Query {
-	if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() > 1 {
+	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
 		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
-	} else if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() == 0 {
+	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
 		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial query"))
 	}
 
-	if q.schema.LocationFieldNames.Size() == 1 {
-		q.builder.Where(query.Covers{Column: q.schema.LocationFieldNames.Keys()[0], Target: target})
+	if q.mainSchema.LocationFieldNames.Size() == 1 {
+		q.builder.Where(query.Covers{Column: q.mainSchema.LocationFieldNames.Keys()[0], Target: target})
 	} else {
-		q.builder.Where(query.Covers{Column: q.schema.RegionFieldNames.Keys()[0], Target: target})
+		q.builder.Where(query.Covers{Column: q.mainSchema.RegionFieldNames.Keys()[0], Target: target})
 	}
 	return q
 }
 
 func (q *Query) WithinRangeOf(targets []model.SpatialObject, rangeMeters float64) *Query {
-	if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() > 1 {
+	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
 		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
-	} else if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() == 0 {
+	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
 		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial query"))
 	}
 
-	if q.schema.LocationFieldNames.Size() == 1 {
+	if q.mainSchema.LocationFieldNames.Size() == 1 {
 		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
 	} else {
-		q.builder.Where(query.WithinRangeOf{Column: q.schema.RegionFieldNames.Keys()[0], Targets: targets, Range: rangeMeters})
+		q.builder.Where(query.WithinRangeOf{Column: q.mainSchema.RegionFieldNames.Keys()[0], Targets: targets, Range: rangeMeters})
 	}
 	return q
 }
 
 func (q *Query) HasWithinRange(targets []model.SpatialObject, rangeMeters float64) *Query {
-	if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() > 1 {
+	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
 		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
-	} else if q.schema.LocationFieldNames.Size()+q.schema.RegionFieldNames.Size() == 0 {
+	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
 		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial query"))
 	}
 
-	if q.schema.LocationFieldNames.Size() == 1 {
-		q.builder.Where(query.HasWithinRange{Column: q.schema.LocationFieldNames.Keys()[0], Targets: targets, Range: rangeMeters})
+	if q.mainSchema.LocationFieldNames.Size() == 1 {
+		q.builder.Where(query.HasWithinRange{Column: q.mainSchema.LocationFieldNames.Keys()[0], Targets: targets, Range: rangeMeters})
 	} else {
-		q.builder.Where(query.HasWithinRange{Column: q.schema.RegionFieldNames.Keys()[0], Targets: targets, Range: rangeMeters})
+		q.builder.Where(query.HasWithinRange{Column: q.mainSchema.RegionFieldNames.Keys()[0], Targets: targets, Range: rangeMeters})
 	}
 	return q
 }
@@ -193,7 +190,7 @@ func (q *Query) Count(count *int) error {
 	}
 	q.builder.QueryType = query.SelectQuery
 	// TODO: order by primary key, limit 1
-	statement, args := q.compiler.CompileSQL(*q.builder)
+	statement, args := query.CompileSQL(*q.builder, q)
 	rows, err := q.database.Query(statement, args...)
 	if err != nil {
 		return err
@@ -208,7 +205,7 @@ func (q *Query) First(response interface{}) error {
 	q.builder.QueryType = query.SelectQuery
 	// TODO: order by primary key, limit 1
 	q.builder.Limit = 1
-	statement, args := q.compiler.CompileSQL(*q.builder)
+	statement, args := query.CompileSQL(*q.builder, q)
 	rows, err := q.database.Query(statement, args...)
 	if err != nil {
 		return err
@@ -221,7 +218,7 @@ func (q *Query) All(response interface{}) error {
 		return q.Error()
 	}
 	q.builder.QueryType = query.SelectQuery
-	statement, args := q.compiler.CompileSQL(*q.builder)
+	statement, args := query.CompileSQL(*q.builder, q)
 	rows, err := q.database.Query(statement, args...)
 	// TODO: return wrapped error
 	if err != nil {
@@ -236,13 +233,12 @@ func (q *Query) Create(object interface{}) (sql.Result, error) {
 		return nil, q.Error()
 	}
 	q.builder.QueryType = query.InsertQuery
-	vals, err := model.ParseObject(object, q.schema)
+	vals, err := model.ParseObject(object, q.mainSchema)
 	if err != nil {
 		return nil, err
 	}
 	q.builder.InsertValues = vals
-	statement, args := q.compiler.CompileSQL(*q.builder)
-	// TODO: Make use of result
+	statement, args := query.CompileSQL(*q.builder, q)
 	return q.database.Execute(statement, args...)
 }
 
@@ -251,7 +247,7 @@ func (q *Query) Update(object interface{}) (sql.Result, error) {
 		return nil, q.Error()
 	}
 	q.builder.QueryType = query.UpdateQuery
-	vals, err := model.ParseObject(object, q.schema)
+	vals, err := model.ParseObject(object, q.mainSchema)
 	if err != nil {
 		return nil, err
 	}
@@ -259,17 +255,92 @@ func (q *Query) Update(object interface{}) (sql.Result, error) {
 		return nil, errors.New("Can only update 1 record each time")
 	}
 	q.builder.InsertValues = vals
-	statement, args := q.compiler.CompileSQL(*q.builder)
-	// TODO: Make use of result
+	statement, args := query.CompileSQL(*q.builder, q)
 	return q.database.Execute(statement, args...)
 }
 
-func (q *Query) getMissingCols(columns ...string) []string {
+func (q *Query) parseCols(columns []string) []string {
+	parsedCols := make([]string, 0)
+	for _, col := range columns {
+		parsedCols = append(parsedCols, q.GetField(col).GetFullName())
+	}
+	return parsedCols
+}
+
+func (q *Query) getMissingCols(columns []string) []string {
 	missingCols := make([]string, 0)
 	for _, col := range columns {
-		if !q.schema.AllFieldNames.Contains(col) {
+		if !q.HasField(col) {
 			missingCols = append(missingCols, col)
 		}
 	}
 	return missingCols
+}
+
+/* Functions for checking/compilation of query */
+func (q *Query) splitFieldName(field string) (schema string, fieldName string) {
+	vals := strings.Split(field, ".")
+	if len(vals) > 2 || len(vals) <= 0 {
+		return
+	}
+	if len(vals) == 1 {
+		schema = q.mainSchema.Name
+		fieldName = vals[0]
+	} else {
+		schema = vals[0]
+		fieldName = vals[1]
+	}
+	return
+}
+
+func (q *Query) isMainSchema(schema string) bool {
+	return schema == q.mainSchema.Name
+}
+
+func (q *Query) HasSchema(schema string) bool {
+	_, inJoin := q.joinSchemas[schema]
+	return schema == q.mainSchema.Name || inJoin
+}
+
+func (q *Query) HasField(field string) bool {
+	schema, fieldName := q.splitFieldName(field)
+	if !q.HasSchema(schema) {
+		return false
+	}
+	if q.isMainSchema(schema) {
+		_, ok := q.mainSchema.FieldsByName[fieldName]
+		return ok
+	}
+	_, ok := q.joinSchemas[schema].FieldsByName[fieldName]
+	return ok
+}
+
+func (q *Query) GetField(field string) *model.Field {
+	if !q.HasField(field) {
+		return nil
+	}
+	schema, fieldName := q.splitFieldName(field)
+	if q.isMainSchema(schema) {
+		return q.mainSchema.FieldsByName[fieldName]
+	}
+	return q.joinSchemas[schema].FieldsByName[fieldName]
+}
+
+func (q *Query) HasFieldOfType(field string, datatype model.DataType) bool {
+	if !q.HasField(field) {
+		return false
+	}
+	return q.GetField(field).DataType == datatype
+}
+
+func (q *Query) GetMainSchema() model.Schema {
+	return q.mainSchema
+}
+
+func (q *Query) GetJoinSchemas() map[string]model.Schema {
+	return q.joinSchemas
+}
+
+func (q *Query) GetAdapterInfo() adapter.AdapterInfo {
+	return q.database.adapter
 }

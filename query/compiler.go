@@ -13,29 +13,38 @@ import (
 )
 
 type Compiler struct {
-	AdapterInfo adapter.AdapterInfo
-	Schema      model.Schema
+	info QueryInfo
+}
+
+func CompileSQL(builder Builder, info QueryInfo) (string, []interface{}) {
+	compiler := Compiler{info: info}
+	return compiler.compileSQL(builder)
+}
+
+func CompileTableCreation(info QueryInfo, ifNotExists bool) string {
+	compiler := Compiler{info: info}
+	return compiler.compileTableCreation(ifNotExists)
 }
 
 func (c Compiler) parseSelectionField(name string) string {
-	field := c.Schema.FieldsByName[name]
+	field := c.info.GetField(name)
 	switch field.DataType {
 	case model.LocationType, model.RegionType:
-		if c.AdapterInfo.SpatialType() == adapter.PostGisExtension {
-			return fmt.Sprintf("ST_AsGeoJSON(%s) as %s", field.DBName, field.DBName)
+		if c.info.GetAdapterInfo().SpatialType() == adapter.PostGisExtension {
+			return fmt.Sprintf("ST_AsGeoJSON(%s) as %s", field.GetFullDBName(), field.DBName)
 		} else {
-			return field.DBName
+			return field.GetFullDBName()
 		}
 	default:
-		return field.DBName
+		return field.GetFullDBName()
 	}
 }
 
 func (c Compiler) parseInsertionValuePlaceholder(name string) string {
-	field := c.Schema.FieldsByName[name]
+	field := c.info.GetField(name)
 	switch field.DataType {
 	case model.LocationType, model.RegionType:
-		if c.AdapterInfo.SpatialType() == adapter.PostGisExtension {
+		if c.info.GetAdapterInfo().SpatialType() == adapter.PostGisExtension {
 			return "ST_GeomFromGeoJSON(?)::geography"
 		} else {
 			return "?"
@@ -45,14 +54,14 @@ func (c Compiler) parseInsertionValuePlaceholder(name string) string {
 	}
 }
 
-func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
+func (c Compiler) compileSQL(builder Builder) (string, []interface{}) {
 	sql := strings.Builder{}
 	values := make([]interface{}, 0)
 	var targetFieldsSet *utils.Set
 	if builder.Selections.Size() == 0 {
-		targetSet := utils.NewSet()
-		for _, field := range c.Schema.Fields {
-			targetSet.Add(field.Name)
+		targetSet := c.info.GetMainSchema().AllFieldNames
+		for _, schema := range c.info.GetJoinSchemas() {
+			targetSet = targetSet.Union(schema.AllFieldNames)
 		}
 		targetFieldsSet = targetSet.Difference(builder.Omissions)
 	} else {
@@ -60,7 +69,7 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 	}
 
 	if builder.QueryType == UpdateQuery && len(builder.Clauses) == 0 {
-		targetFieldsSet = targetFieldsSet.Difference(c.Schema.PrimaryFieldNames)
+		targetFieldsSet = targetFieldsSet.Difference(c.info.GetMainSchema().PrimaryFieldNames)
 	}
 
 	targetFields := targetFieldsSet.Keys()
@@ -92,7 +101,7 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 		sql.WriteString("UPDATE ")
 	}
 
-	sql.WriteString(c.Schema.Table + " ")
+	sql.WriteString(c.info.GetMainSchema().Table + " ")
 
 	switch qType := builder.QueryType; qType {
 	case SelectQuery:
@@ -102,14 +111,14 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 			if len(builder.Clauses) > 1 {
 				clause = append(And{}, builder.Clauses...)
 			}
-			clauseSql, clauseValues := clause.Sql(c.Schema.FieldsByName, c.AdapterInfo.SpatialType())
+			clauseSql, clauseValues := clause.Sql(c.info)
 			sql.WriteString(clauseSql)
 			values = append(values, clauseValues...)
 		}
 		if len(builder.Orders) > 0 {
 			sql.WriteString(" ORDER BY ")
 			for i, order := range builder.Orders {
-				clauseSql, clauseValues := order.Sql(c.Schema.FieldsByName, c.AdapterInfo.SpatialType())
+				clauseSql, clauseValues := order.Sql(c.info)
 				sql.WriteString(clauseSql)
 				values = append(values, clauseValues...)
 				if i < len(builder.Orders)-1 {
@@ -129,7 +138,7 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 	case InsertQuery:
 		sql.WriteString("(")
 		for i, key := range targetFields {
-			sql.WriteString(c.Schema.FieldsByName[key].DBName)
+			sql.WriteString(c.info.GetField(key).DBName)
 			if i < len(targetFields)-1 {
 				sql.WriteString(",")
 			}
@@ -141,7 +150,7 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 			sql.WriteString("(")
 			for k, key := range targetFields {
 				sql.WriteString(c.parseInsertionValuePlaceholder(key))
-				values = append(values, insertVal[key])
+				values = append(values, insertVal[c.info.GetField(key).Name])
 				if k < len(targetFields)-1 {
 					sql.WriteString(",")
 				}
@@ -155,10 +164,10 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 		insertVal := builder.InsertValues[0]
 		sql.WriteString("SET ")
 		for i, key := range targetFields {
-			sql.WriteString(c.Schema.FieldsByName[key].DBName)
+			sql.WriteString(c.info.GetField(key).DBName)
 			sql.WriteString(" = ")
 			sql.WriteString(c.parseInsertionValuePlaceholder(key))
-			values = append(values, insertVal[key])
+			values = append(values, insertVal[c.info.GetField(key).Name])
 			if i < len(targetFields)-1 {
 				sql.WriteString(",")
 			}
@@ -169,51 +178,53 @@ func (c Compiler) CompileSQL(builder Builder) (string, []interface{}) {
 			if len(builder.Clauses) > 1 {
 				clause = append(And{}, builder.Clauses...)
 			}
-			clauseSql, clauseValues := clause.Sql(c.Schema.FieldsByName, c.AdapterInfo.SpatialType())
+			clauseSql, clauseValues := clause.Sql(c.info)
 			sql.WriteString(clauseSql)
 			values = append(values, clauseValues...)
 		} else {
 			primaryClauses := And{}
-			for _, field := range c.Schema.PrimaryFields {
+			for _, field := range c.info.GetMainSchema().PrimaryFields {
 				primaryClauses = append(primaryClauses, Equal{Column: field.Name, Value: insertVal[field.Name]})
 			}
-			clauseSql, clauseValues := primaryClauses.Sql(c.Schema.FieldsByName, c.AdapterInfo.SpatialType())
+			clauseSql, clauseValues := primaryClauses.Sql(c.info)
 			sql.WriteString(clauseSql)
 			values = append(values, clauseValues...)
 		}
 	}
 	sql.WriteString(";")
-	return replacePlaceholder(sql.String(), c.AdapterInfo.Placeholder()), values
+	return replacePlaceholder(sql.String(), c.info.GetAdapterInfo().Placeholder()), values
 }
 
-func (c Compiler) CompileTableCreation(ifNotExists bool) string {
+func (c Compiler) compileTableCreation(ifNotExists bool) string {
+	schema := c.info.GetMainSchema()
 	sql := strings.Builder{}
 	sql.WriteString("CREATE TABLE ")
 	if ifNotExists {
 		sql.WriteString("IF NOT EXISTS ")
 	}
-	sql.WriteString(c.Schema.Table)
+	sql.WriteString(schema.Table)
 	sql.WriteString(" (")
 
-	for i, field := range c.Schema.Fields {
+	for i, field := range schema.Fields {
 		sql.WriteString(field.DBName)
 		sql.WriteString(" ")
 		sql.WriteString(c.parseFieldType(field))
 		qualifiers := c.parseFieldQualifiers(field)
 		sql.WriteString(qualifiers)
-		if i < len(c.Schema.Fields)-1 {
+		if i < len(schema.Fields)-1 {
 			sql.WriteString(", ")
 		}
 	}
 
 	sql.WriteString(");")
 
-	return replacePlaceholder(sql.String(), c.AdapterInfo.Placeholder())
+	return replacePlaceholder(sql.String(), c.info.GetAdapterInfo().Placeholder())
 }
 
 func (c Compiler) parseFieldQualifiers(field *model.Field) string {
 	qualifiers := strings.Builder{}
-	switch c.AdapterInfo.DatabaseType() {
+	adapterInfo := c.info.GetAdapterInfo()
+	switch adapterInfo.DatabaseType() {
 	case adapter.PostgreSQL:
 		if field.PrimaryKey {
 			qualifiers.WriteString(" PRIMARY KEY")
@@ -233,7 +244,7 @@ func (c Compiler) parseFieldQualifiers(field *model.Field) string {
 				case model.Location, model.Region:
 					val, err := v.(driver.Valuer).Value()
 					if err == nil {
-						switch c.AdapterInfo.SpatialType() {
+						switch adapterInfo.SpatialType() {
 						case adapter.PostGisExtension:
 							geom := bytes.NewBuffer(val.([]uint8))
 							qualifiers.WriteString(fmt.Sprintf(" DEFAULT ST_GeomFromGeoJSON('%v')::geography", geom.String()))
@@ -256,7 +267,7 @@ func (c Compiler) parseFieldQualifiers(field *model.Field) string {
 }
 
 func (c Compiler) parseFieldType(field *model.Field) string {
-	switch c.AdapterInfo.DatabaseType() {
+	switch c.info.GetAdapterInfo().DatabaseType() {
 	case adapter.PostgreSQL:
 		if field.AutoIncrement {
 			return "serial"
@@ -289,7 +300,6 @@ func (c Compiler) parseFieldType(field *model.Field) string {
 		return ""
 	}
 }
-
 func replacePlaceholder(sqlString string, style adapter.PlaceholderStyle) string {
 	switch style {
 	case adapter.DollarPlaceholder:
