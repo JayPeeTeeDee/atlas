@@ -67,6 +67,41 @@ func (q *Query) Omit(columns ...string) *Query {
 	return q
 }
 
+func (q *Query) join(joinType query.JoinType, otherSchema string, clause query.Clause) {
+	schema, err := q.database.GetSchemaByName(otherSchema)
+	if err != nil {
+		q.buildErrors = append(q.buildErrors, fmt.Errorf("Failed to find join schema: %s", otherSchema))
+	}
+	if _, ok := q.joinSchemas[otherSchema]; !ok {
+		q.joinSchemas[otherSchema] = schema
+	}
+	newJoin := query.Join{Schema: q.mainSchema.Name, OtherSchema: schema.Name, Type: joinType, JoinClause: clause}
+	if !newJoin.IsValid(q) {
+		q.buildErrors = append(q.buildErrors, fmt.Errorf("Invalid join of type: %s", joinType))
+	}
+	q.builder.Join(newJoin)
+}
+
+func (q *Query) Join(otherSchema string, clause query.Clause) *Query {
+	q.join(query.InnerJoin, otherSchema, clause)
+	return q
+}
+
+func (q *Query) OuterJoin(otherSchema string, clause query.Clause) *Query {
+	q.join(query.OuterJoin, otherSchema, clause)
+	return q
+}
+
+func (q *Query) LeftJoin(otherSchema string, clause query.Clause) *Query {
+	q.join(query.LeftJoin, otherSchema, clause)
+	return q
+}
+
+func (q *Query) RightJoin(otherSchema string, clause query.Clause) *Query {
+	q.join(query.RightJoin, otherSchema, clause)
+	return q
+}
+
 func (q *Query) Where(clause query.Clause) *Query {
 	if !clause.IsValid(q) {
 		q.buildErrors = append(q.buildErrors, fmt.Errorf("Invalid clause of type: %s", clause.Condition()))

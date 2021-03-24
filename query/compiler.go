@@ -105,6 +105,12 @@ func (c Compiler) compileSQL(builder Builder) (string, []interface{}) {
 
 	switch qType := builder.QueryType; qType {
 	case SelectQuery:
+		for _, join := range builder.Joins {
+			joinSql, joinVals := join.Sql(c.info)
+			sql.WriteString(joinSql)
+			values = append(values, joinVals...)
+			sql.WriteString(" ")
+		}
 		if len(builder.Clauses) > 0 {
 			sql.WriteString("WHERE ")
 			clause := builder.Clauses[0]

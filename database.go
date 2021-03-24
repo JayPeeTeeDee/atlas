@@ -78,10 +78,14 @@ func (d *Database) getSchema(target interface{}) (model.Schema, error) {
 		return model.Schema{}, err
 	}
 
+	return d.GetSchemaByName(name)
+}
+
+func (d *Database) GetSchemaByName(name string) (model.Schema, error) {
 	if schema, ok := d.schemas[name]; ok {
 		return schema, nil
 	} else {
-		return model.Schema{}, fmt.Errorf("%w: %+v", ErrNoSchema, target)
+		return model.Schema{}, fmt.Errorf("%w: %+v", ErrNoSchema, name)
 	}
 }
 

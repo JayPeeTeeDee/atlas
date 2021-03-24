@@ -19,6 +19,7 @@ type Builder struct {
 	Omissions  *utils.Set
 	Clauses    []Clause
 	Orders     []Order
+	Joins      []Join
 	Limit      uint64
 	Offset     uint64
 	QueryType  Type
@@ -39,6 +40,11 @@ func NewBuilder() *Builder {
 
 func (b *Builder) Where(clause Clause) *Builder {
 	b.Clauses = append(b.Clauses, clause)
+	return b
+}
+
+func (b *Builder) Join(join Join) *Builder {
+	b.Joins = append(b.Joins, join)
 	return b
 }
 
