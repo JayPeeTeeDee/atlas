@@ -42,9 +42,10 @@ func (c ColumnOrder) IsDescending() bool {
 }
 
 type SpatialOrder struct {
-	Column     string
-	Descending bool
-	Target     model.SpatialObject
+	Column       string
+	Descending   bool
+	Target       model.SpatialObject
+	TargetColumn string
 }
 
 func (s SpatialOrder) Sql(info QueryInfo) (string, []interface{}) {
@@ -52,6 +53,9 @@ func (s SpatialOrder) Sql(info QueryInfo) (string, []interface{}) {
 	sql := ""
 	switch spatialType {
 	case adapter.PostGisExtension:
+		if s.TargetColumn != "" {
+			return fmt.Sprintf("ST_Distance(%s, %s)", info.GetField(s.TargetColumn).GetFullDBName(), info.GetField(s.Column).GetFullDBName()), []interface{}{}
+		}
 		sql += fmt.Sprintf("%s::geometry <#> ST_GeomFromGeoJSON(?) ", info.GetField(s.Column).DBName)
 	default:
 		sql += fmt.Sprintf("%s::geometry <#> ST_GeomFromGeoJSON(?) ", info.GetField(s.Column).DBName)
@@ -66,16 +70,19 @@ func (s SpatialOrder) Sql(info QueryInfo) (string, []interface{}) {
 
 func (s SpatialOrder) IsValid(info QueryInfo) bool {
 	field := info.GetField(s.Column)
-	if field == nil || (field.DataType != model.LocationType && field.DataType != model.RegionType) {
+	if field == nil {
 		return false
-	} else {
-		switch s.Target.(type) {
-		case model.Location, model.Region:
-			return true
-		default:
+	}
+	firstOk := field.DataType == model.LocationType || field.DataType == model.RegionType
+	secondOk := true
+	if s.TargetColumn != "" {
+		otherField := info.GetField(s.TargetColumn)
+		if otherField == nil {
 			return false
 		}
+		secondOk = otherField.DataType == model.LocationType || otherField.DataType == model.RegionType
 	}
+	return firstOk && secondOk
 }
 
 func (s SpatialOrder) IsDescending() bool {

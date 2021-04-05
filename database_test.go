@@ -85,6 +85,15 @@ func TestModelSingleQuery(t *testing.T) {
 		t.Errorf("Query is wrong")
 	}
 
+	count := 0
+	err = db.Model("ModelTest").Where(query.Equal{Column: "A", Value: "1"}).Count(&count)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+	if count != 2 {
+		t.Errorf("Query is wrong")
+	}
+
 	res = ModelTest{}
 	err = db.Model("ModelTest").Where(query.And{
 		query.Equal{Column: "ModelTest.A", Value: "1"},

@@ -79,7 +79,7 @@ func (c Compiler) compileSQL(builder Builder) (string, []interface{}) {
 		sql.WriteString("SELECT ")
 
 		if builder.IsCount {
-			sql.WriteString("COUNT(*) ")
+			sql.WriteString(fmt.Sprintf("COUNT(%s) ", c.parseSelectionField(targetFields[0])))
 		} else {
 			selBuilder := strings.Builder{}
 			for i, sel := range targetFields {

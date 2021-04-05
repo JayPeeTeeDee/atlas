@@ -224,7 +224,7 @@ func (q *Query) Count(count *int) error {
 		return q.Error()
 	}
 	q.builder.QueryType = query.SelectQuery
-	// TODO: order by primary key, limit 1
+	q.builder.IsCount = true
 	statement, args := query.CompileSQL(*q.builder, q)
 	rows, err := q.database.Query(statement, args...)
 	if err != nil {
@@ -238,7 +238,6 @@ func (q *Query) First(response interface{}) error {
 		return q.Error()
 	}
 	q.builder.QueryType = query.SelectQuery
-	// TODO: order by primary key, limit 1
 	q.builder.Limit = 1
 	statement, args := query.CompileSQL(*q.builder, q)
 	rows, err := q.database.Query(statement, args...)
