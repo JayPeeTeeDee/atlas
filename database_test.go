@@ -129,7 +129,7 @@ func TestModelSelectQuery(t *testing.T) {
 		t.Errorf("Failed to create table: %s\n", err.Error())
 	}
 
-	_, err = db.Query("INSERT INTO model_test VALUES (1, 1), (2, 2), (1, 2)")
+	_, err = db.Query("INSERT INTO model_test VALUES (1, 1), (2, 2), (1, 2), (1, 1)")
 	if err != nil {
 		t.Errorf("Failed to insert rows: %s\n", err.Error())
 	}
@@ -150,7 +150,7 @@ func TestModelSelectQuery(t *testing.T) {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}
 
-	if len(other) != 2 {
+	if len(other) != 3 {
 		t.Errorf("Query is wrong")
 	}
 	for _, model := range other {
@@ -159,8 +159,18 @@ func TestModelSelectQuery(t *testing.T) {
 		}
 	}
 
+	count := 0
+	err = db.Model("ModelTest").Select("ModelTest.A").Distinct().Where(query.Equal{Column: "A", Value: "1"}).Count(&count)
+	if err != nil {
+		t.Errorf("Failed to query: %s\n", err.Error())
+	}
+
+	if count != 1 {
+		t.Errorf("Query is wrong")
+	}
+
 	other = make([]ModelTest, 0)
-	err = db.Model("ModelTest").Select("A", "B").Where(query.Equal{Column: "A", Value: "1"}).All(&other)
+	err = db.Model("ModelTest").Select("A", "B").Distinct().Where(query.Equal{Column: "A", Value: "1"}).All(&other)
 	if err != nil {
 		t.Errorf("Failed to query: %s\n", err.Error())
 	}

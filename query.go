@@ -49,6 +49,11 @@ func (q *Query) Error() error {
 }
 
 /* Functions for building up query */
+func (q *Query) Distinct() *Query {
+	q.builder.IsDistinct = true
+	return q
+}
+
 func (q *Query) Select(columns ...string) *Query {
 	missingCols := q.getMissingCols(columns)
 	if len(missingCols) > 0 {

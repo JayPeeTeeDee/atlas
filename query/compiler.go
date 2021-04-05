@@ -79,8 +79,24 @@ func (c Compiler) compileSQL(builder Builder) (string, []interface{}) {
 		sql.WriteString("SELECT ")
 
 		if builder.IsCount {
-			sql.WriteString(fmt.Sprintf("COUNT(%s) ", c.parseSelectionField(targetFields[0])))
+			if builder.IsDistinct {
+				sql.WriteString("COUNT(DISTINCT(")
+				selBuilder := strings.Builder{}
+				for i, sel := range targetFields {
+					selBuilder.WriteString(c.parseSelectionField(sel))
+					if i < len(targetFields)-1 {
+						selBuilder.WriteString(",")
+					}
+				}
+				sql.WriteString(selBuilder.String())
+				sql.WriteString(")) ")
+			} else {
+				sql.WriteString("COUNT(*) ")
+			}
 		} else {
+			if builder.IsDistinct {
+				sql.WriteString("DISTINCT ")
+			}
 			selBuilder := strings.Builder{}
 			for i, sel := range targetFields {
 				selBuilder.WriteString(c.parseSelectionField(sel))

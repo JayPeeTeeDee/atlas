@@ -24,6 +24,7 @@ type Builder struct {
 	Offset     uint64
 	QueryType  Type
 	IsCount    bool
+	IsDistinct bool
 
 	InsertValues []map[string]interface{}
 	// TODO: join, having, groupby, returning
