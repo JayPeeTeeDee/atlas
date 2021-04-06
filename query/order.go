@@ -54,7 +54,7 @@ func (s SpatialOrder) Sql(info QueryInfo) (string, []interface{}) {
 	switch spatialType {
 	case adapter.PostGisExtension:
 		if s.TargetColumn != "" {
-			return fmt.Sprintf("ST_Distance(%s, %s)", info.GetField(s.TargetColumn).GetFullDBName(), info.GetField(s.Column).GetFullDBName()), []interface{}{}
+			return fmt.Sprintf("%s::geometry <#> %s::geometry", info.GetField(s.TargetColumn).GetFullDBName(), info.GetField(s.Column).GetFullDBName()), []interface{}{}
 		}
 		sql += fmt.Sprintf("%s::geometry <#> ST_GeomFromGeoJSON(?) ", info.GetField(s.Column).DBName)
 	default:
