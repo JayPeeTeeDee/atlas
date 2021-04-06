@@ -146,77 +146,125 @@ func (q *Query) OrderByColDistance(column string, target model.SpatialObject, de
 	return q.OrderBy(order)
 }
 
-func (q *Query) OrderByNearestTo(target model.SpatialObject, desc bool) *Query {
-	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
-		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial ordering"))
-	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
-		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial ordering"))
-	}
+func (q *Query) OrderByColDistances(column string, otherColumn string, desc bool) *Query {
+	order := query.SpatialOrder{Column: column, TargetColumn: otherColumn, Descending: desc}
+	return q.OrderBy(order)
+}
 
-	if q.mainSchema.LocationFieldNames.Size() == 1 {
-		q.OrderBy(query.SpatialOrder{Column: q.mainSchema.LocationFieldNames.Keys()[0], Target: target, Descending: desc})
+func (q *Query) OrderByNearestTo(target model.SpatialObject, desc bool) *Query {
+	isValid, fieldName := q.verifySingleSpatialField(q.mainSchema)
+	if !isValid {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple or no spatial fields in schema, please specify column for spatial ordering"))
 	} else {
-		q.OrderBy(query.SpatialOrder{Column: q.mainSchema.RegionFieldNames.Keys()[0], Target: target, Descending: desc})
+		q.OrderBy(query.SpatialOrder{Column: fieldName, Target: target, Descending: desc})
+	}
+	return q
+}
+
+func (q *Query) OrderByNearestToModel(targetModel string, desc bool) *Query {
+	isMainValid, mainFieldName := q.verifySingleSpatialField(q.mainSchema)
+	otherSchema, hasOtherSchema := q.joinSchemas[targetModel]
+	if !hasOtherSchema {
+		q.buildErrors = append(q.buildErrors, errors.New("Target model is not registered!"))
+		return q
+	}
+	isOtherValid, otherFieldName := q.verifySingleSpatialField(otherSchema)
+
+	if !isMainValid || !isOtherValid {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple or no spatial fields in schema, please specify column for spatial ordering"))
+	} else {
+		q.OrderBy(query.SpatialOrder{Column: mainFieldName, TargetColumn: otherFieldName, Descending: desc})
 	}
 	return q
 }
 
 func (q *Query) CoveredBy(target model.SpatialObject) *Query {
-	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
-		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
-	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
-		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial query"))
-	}
-
-	if q.mainSchema.LocationFieldNames.Size() == 1 {
-		q.builder.Where(query.CoveredBy{Column: q.mainSchema.LocationFieldNames.Keys()[0], Target: target})
+	isMainValid, mainFieldName := q.verifySingleSpatialField(q.mainSchema)
+	if !isMainValid {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple or no spatial fields in schema, please specify column for spatial ordering"))
 	} else {
-		q.builder.Where(query.CoveredBy{Column: q.mainSchema.RegionFieldNames.Keys()[0], Target: target})
+		q.builder.Where(query.CoveredBy{Column: mainFieldName, Target: target})
+	}
+	return q
+}
+
+func (q *Query) CoveredByModel(targetModel string) *Query {
+	isMainValid, mainFieldName := q.verifySingleSpatialField(q.mainSchema)
+	otherSchema, hasOtherSchema := q.joinSchemas[targetModel]
+	if !hasOtherSchema {
+		q.buildErrors = append(q.buildErrors, errors.New("Target model is not registered!"))
+		return q
+	}
+	isOtherValid, otherFieldName := q.verifySingleSpatialField(otherSchema)
+
+	if !isMainValid || !isOtherValid {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple or no spatial fields in schema, please specify column for spatial ordering"))
+	} else {
+		q.builder.Where(query.CoveredBy{Column: mainFieldName, TargetColumn: otherFieldName})
 	}
 	return q
 }
 
 func (q *Query) Covers(target model.SpatialObject) *Query {
-	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
-		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
-	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
-		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial query"))
-	}
-
-	if q.mainSchema.LocationFieldNames.Size() == 1 {
-		q.builder.Where(query.Covers{Column: q.mainSchema.LocationFieldNames.Keys()[0], Target: target})
+	isMainValid, mainFieldName := q.verifySingleSpatialField(q.mainSchema)
+	if !isMainValid {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple or no spatial fields in schema, please specify column for spatial ordering"))
 	} else {
-		q.builder.Where(query.Covers{Column: q.mainSchema.RegionFieldNames.Keys()[0], Target: target})
+		q.builder.Where(query.Covers{Column: mainFieldName, Target: target})
+	}
+	return q
+}
+
+func (q *Query) CoversModel(targetModel string) *Query {
+	isMainValid, mainFieldName := q.verifySingleSpatialField(q.mainSchema)
+	otherSchema, hasOtherSchema := q.joinSchemas[targetModel]
+	if !hasOtherSchema {
+		q.buildErrors = append(q.buildErrors, errors.New("Target model is not registered!"))
+		return q
+	}
+	isOtherValid, otherFieldName := q.verifySingleSpatialField(otherSchema)
+
+	if !isMainValid || !isOtherValid {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple or no spatial fields in schema, please specify column for spatial ordering"))
+	} else {
+		q.builder.Where(query.Covers{Column: mainFieldName, TargetColumn: otherFieldName})
 	}
 	return q
 }
 
 func (q *Query) WithinRangeOf(targets []model.SpatialObject, rangeMeters float64) *Query {
-	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
-		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
-	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
-		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial query"))
-	}
-
-	if q.mainSchema.LocationFieldNames.Size() == 1 {
-		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
+	isMainValid, mainFieldName := q.verifySingleSpatialField(q.mainSchema)
+	if !isMainValid {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple or no spatial fields in schema, please specify column for spatial ordering"))
 	} else {
-		q.builder.Where(query.WithinRangeOf{Column: q.mainSchema.RegionFieldNames.Keys()[0], Targets: targets, Range: rangeMeters})
+		q.builder.Where(query.WithinRangeOf{Column: mainFieldName, Targets: targets, Range: rangeMeters})
+	}
+	return q
+}
+
+func (q *Query) WithinRangeOfModel(targetModel string, rangeMeters float64) *Query {
+	isMainValid, mainFieldName := q.verifySingleSpatialField(q.mainSchema)
+	otherSchema, hasOtherSchema := q.joinSchemas[targetModel]
+	if !hasOtherSchema {
+		q.buildErrors = append(q.buildErrors, errors.New("Target model is not registered!"))
+		return q
+	}
+	isOtherValid, otherFieldName := q.verifySingleSpatialField(otherSchema)
+
+	if !isMainValid || !isOtherValid {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple or no spatial fields in schema, please specify column for spatial ordering"))
+	} else {
+		q.builder.Where(query.WithinRangeOf{Column: mainFieldName, TargetColumn: otherFieldName, Range: rangeMeters})
 	}
 	return q
 }
 
 func (q *Query) HasWithinRange(targets []model.SpatialObject, rangeMeters float64) *Query {
-	if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() > 1 {
-		q.buildErrors = append(q.buildErrors, errors.New("Multiple spatial fields in schema, please specify column for spatial query"))
-	} else if q.mainSchema.LocationFieldNames.Size()+q.mainSchema.RegionFieldNames.Size() == 0 {
-		q.buildErrors = append(q.buildErrors, errors.New("No spatial fields in schema for spatial query"))
-	}
-
-	if q.mainSchema.LocationFieldNames.Size() == 1 {
-		q.builder.Where(query.HasWithinRange{Column: q.mainSchema.LocationFieldNames.Keys()[0], Targets: targets, Range: rangeMeters})
+	isMainValid, mainFieldName := q.verifySingleSpatialField(q.mainSchema)
+	if !isMainValid {
+		q.buildErrors = append(q.buildErrors, errors.New("Multiple or no spatial fields in schema, please specify column for spatial ordering"))
 	} else {
-		q.builder.Where(query.HasWithinRange{Column: q.mainSchema.RegionFieldNames.Keys()[0], Targets: targets, Range: rangeMeters})
+		q.builder.Where(query.HasWithinRange{Column: mainFieldName, Targets: targets, Range: rangeMeters})
 	}
 	return q
 }
@@ -330,6 +378,18 @@ func (q *Query) splitFieldName(field string) (schema string, fieldName string) {
 		fieldName = vals[1]
 	}
 	return
+}
+
+func (q *Query) verifySingleSpatialField(targetSchema model.Schema) (bool, string) {
+	if targetSchema.LocationFieldNames.Size()+targetSchema.RegionFieldNames.Size() != 1 {
+		return false, ""
+	} else {
+		if targetSchema.LocationFieldNames.Size() == 1 {
+			return true, targetSchema.LocationFieldNames.Keys()[0]
+		} else {
+			return true, targetSchema.RegionFieldNames.Keys()[0]
+		}
+	}
 }
 
 func (q *Query) isMainSchema(schema string) bool {
