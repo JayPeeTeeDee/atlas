@@ -30,6 +30,14 @@ func (l *Location) IsEqual(other Location) bool {
 	return first_err == nil && other_err == nil && reflect.DeepEqual(first_val, other_val)
 }
 
+func (l *Location) Lon() float64 {
+	return l.point.Point[0]
+}
+
+func (l *Location) Lat() float64 {
+	return l.point.Point[1]
+}
+
 func (l *Location) Scan(value interface{}) error {
 	l.point = &geojson.Geometry{}
 	if value == nil {
@@ -86,6 +94,10 @@ func NewRectRegion(minLon float64, maxLon float64, minLat float64, maxLat float6
 	poly = append(poly, []float64{maxLon, maxLat})
 	poly = append(poly, []float64{maxLon, minLat})
 	return NewRegion(poly)
+}
+
+func (r *Region) Coords() [][]float64 {
+	return copyFloatMatrix(r.polygon.Polygon[0])
 }
 
 func (r *Region) IsEqual(other Region) bool {

@@ -72,3 +72,12 @@ func toSnakeCase(str string) string {
 	snake = matchAllCapRe.ReplaceAllString(snake, "${1}_${2}")
 	return strings.ToLower(snake)
 }
+
+func copyFloatMatrix(matrix [][]float64) [][]float64 {
+	res := make([][]float64, len(matrix))
+	for i := range matrix {
+		res[i] = make([]float64, len(matrix[i]))
+		copy(res[i], matrix[i])
+	}
+	return res
+}
