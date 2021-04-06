@@ -26,6 +26,11 @@ func CompileTableCreation(info QueryInfo, ifNotExists bool) string {
 	return compiler.compileTableCreation(ifNotExists)
 }
 
+func CompileIndexCreation(info QueryInfo) []string {
+	compiler := Compiler{info: info}
+	return compiler.compileIndexCreation()
+}
+
 func (c Compiler) parseSelectionField(name string) string {
 	field := c.info.GetField(name)
 	switch field.DataType {
@@ -241,6 +246,26 @@ func (c Compiler) compileTableCreation(ifNotExists bool) string {
 	sql.WriteString(");")
 
 	return replacePlaceholder(sql.String(), c.info.GetAdapterInfo().Placeholder())
+}
+
+func (c Compiler) compileIndexCreation() []string {
+	schema := c.info.GetMainSchema()
+	allStatements := make([]string, 0)
+
+	// Create indexes for spatial types
+	for _, fieldName := range schema.LocationFieldNames.Keys() {
+		field := c.info.GetField(fieldName)
+		indexName := fmt.Sprintf("idx_%s_%s", schema.Table, field.DBName)
+		allStatements = append(allStatements, fmt.Sprintf("CREATE INDEX %s ON %s USING GIST (%s);", indexName, schema.Table, field.DBName))
+	}
+
+	for _, fieldName := range schema.RegionFieldNames.Keys() {
+		field := c.info.GetField(fieldName)
+		indexName := fmt.Sprintf("idx_%s_%s", schema.Table, field.DBName)
+		allStatements = append(allStatements, fmt.Sprintf("CREATE INDEX %s ON %s USING GIST (%s);", indexName, schema.Table, field.DBName))
+	}
+
+	return allStatements
 }
 
 func (c Compiler) parseFieldQualifiers(field *model.Field) string {

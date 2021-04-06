@@ -56,6 +56,15 @@ func (d *Database) CreateTable(schemaName string, ifNotExists bool) error {
 	}
 	sql := query.CompileTableCreation(NewQuery(schema, d), ifNotExists)
 	_, err := d.Execute(sql)
+	if err == nil {
+		statements := query.CompileIndexCreation(NewQuery(schema, d))
+		for _, statement := range statements {
+			_, err := d.Execute(statement)
+			if err != nil {
+				return errors.New("Failed to create indexes for: " + schemaName)
+			}
+		}
+	}
 	return err
 }
 
