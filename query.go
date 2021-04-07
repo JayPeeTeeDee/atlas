@@ -19,6 +19,8 @@ type Query struct {
 	builder     *query.Builder
 	database    *Database
 	buildErrors []error
+
+	Echo bool
 }
 
 type Result struct {
@@ -46,6 +48,11 @@ func (q *Query) Error() error {
 		}
 		return errors.New(strings.Join(errList, ","))
 	}
+}
+
+func (q *Query) EchoQuery() *Query {
+	q.Echo = true
+	return q
 }
 
 /* Functions for building up query */
@@ -279,6 +286,9 @@ func (q *Query) Count(count *int) error {
 	q.builder.QueryType = query.SelectQuery
 	q.builder.IsCount = true
 	statement, args := query.CompileSQL(*q.builder, q)
+	if q.Echo {
+		fmt.Println(statement)
+	}
 	rows, err := q.database.Query(statement, args...)
 	if err != nil {
 		return err
@@ -293,6 +303,9 @@ func (q *Query) First(response interface{}) error {
 	q.builder.QueryType = query.SelectQuery
 	q.builder.Limit = 1
 	statement, args := query.CompileSQL(*q.builder, q)
+	if q.Echo {
+		fmt.Println(statement)
+	}
 	rows, err := q.database.Query(statement, args...)
 	if err != nil {
 		return err
@@ -306,6 +319,9 @@ func (q *Query) All(response interface{}) error {
 	}
 	q.builder.QueryType = query.SelectQuery
 	statement, args := query.CompileSQL(*q.builder, q)
+	if q.Echo {
+		fmt.Println(statement)
+	}
 	rows, err := q.database.Query(statement, args...)
 	// TODO: return wrapped error
 	if err != nil {
@@ -326,6 +342,9 @@ func (q *Query) Create(object interface{}) (sql.Result, error) {
 	}
 	q.builder.InsertValues = vals
 	statement, args := query.CompileSQL(*q.builder, q)
+	if q.Echo {
+		fmt.Println(statement)
+	}
 	return q.database.Execute(statement, args...)
 }
 
@@ -343,6 +362,9 @@ func (q *Query) Update(object interface{}) (sql.Result, error) {
 	}
 	q.builder.InsertValues = vals
 	statement, args := query.CompileSQL(*q.builder, q)
+	if q.Echo {
+		fmt.Println(statement)
+	}
 	return q.database.Execute(statement, args...)
 }
 
