@@ -26,9 +26,9 @@ func CompileTableCreation(info QueryInfo, ifNotExists bool) string {
 	return compiler.compileTableCreation(ifNotExists)
 }
 
-func CompileIndexCreation(info QueryInfo) []string {
+func CompileIndexCreation(info QueryInfo, ifNotExists bool) []string {
 	compiler := Compiler{info: info}
-	return compiler.compileIndexCreation()
+	return compiler.compileIndexCreation(ifNotExists)
 }
 
 func (c Compiler) parseSelectionField(name string) string {
@@ -248,7 +248,7 @@ func (c Compiler) compileTableCreation(ifNotExists bool) string {
 	return replacePlaceholder(sql.String(), c.info.GetAdapterInfo().Placeholder())
 }
 
-func (c Compiler) compileIndexCreation() []string {
+func (c Compiler) compileIndexCreation(ifNotExists bool) []string {
 	schema := c.info.GetMainSchema()
 	allStatements := make([]string, 0)
 
@@ -256,6 +256,9 @@ func (c Compiler) compileIndexCreation() []string {
 	for _, fieldName := range schema.LocationFieldNames.Keys() {
 		field := c.info.GetField(fieldName)
 		indexName := fmt.Sprintf("idx_%s_%s", schema.Table, field.DBName)
+		if ifNotExists {
+			indexName = "IF NOT EXISTS " + indexName
+		}
 		allStatements = append(allStatements, fmt.Sprintf("CREATE INDEX %s ON %s USING GIST (%s);", indexName, schema.Table, field.DBName))
 	}
 
