@@ -265,6 +265,9 @@ func (c Compiler) compileIndexCreation(ifNotExists bool) []string {
 	for _, fieldName := range schema.RegionFieldNames.Keys() {
 		field := c.info.GetField(fieldName)
 		indexName := fmt.Sprintf("idx_%s_%s", schema.Table, field.DBName)
+		if ifNotExists {
+			indexName = "IF NOT EXISTS " + indexName
+		}
 		allStatements = append(allStatements, fmt.Sprintf("CREATE INDEX %s ON %s USING GIST (%s);", indexName, schema.Table, field.DBName))
 	}
 
